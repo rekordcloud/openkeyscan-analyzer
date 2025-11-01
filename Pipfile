@@ -1,0 +1,18 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+torch = ">=2.0"
+torchaudio = "*"
+librosa = "*"
+numpy = "*"
+tqdm = "*"
+
+[dev-packages]
+pyinstaller = "*"
+psutil = "*"
+
+[requires]
+python_version = "3.13"
