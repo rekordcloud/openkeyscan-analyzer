@@ -72,6 +72,7 @@ coll = COLLECT(
 # Post-build: Dereference symlinks for distribution compatibility
 import os
 import shutil
+import zipfile
 
 def dereference_symlinks(dist_path):
     """Replace all symlinks with actual files/directories."""
@@ -121,7 +122,48 @@ def dereference_symlinks(dist_path):
     print(f"Successfully dereferenced {len(symlinks_found)} symlinks")
     print("="*70 + "\n")
 
+def create_zip_archive(dist_path, output_name):
+    """Create a zip archive of the distribution folder."""
+    print("\n" + "="*70)
+    print("Post-build: Creating zip archive for distribution")
+    print("="*70)
+
+    zip_path = dist_path.parent / f"{output_name}.zip"
+
+    # Remove existing zip if it exists
+    if zip_path.exists():
+        zip_path.unlink()
+        print(f"Removed existing archive: {zip_path.name}")
+
+    print(f"Creating archive: {zip_path.name}")
+    print(f"Compressing: {dist_path.name}/")
+
+    file_count = 0
+    total_size = 0
+
+    with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED, compresslevel=9) as zipf:
+        # Walk through all files in the distribution folder
+        for root, dirs, files in os.walk(dist_path):
+            for file in files:
+                file_path = Path(root) / file
+                # Calculate relative path from dist folder
+                arcname = file_path.relative_to(dist_path.parent)
+                zipf.write(file_path, arcname)
+                file_count += 1
+                total_size += file_path.stat().st_size
+
+    zip_size = zip_path.stat().st_size
+    compression_ratio = (1 - zip_size / total_size) * 100 if total_size > 0 else 0
+
+    print(f"  ✓ Added {file_count} files")
+    print(f"  ✓ Original size: {total_size / 1024 / 1024:.1f} MB")
+    print(f"  ✓ Compressed size: {zip_size / 1024 / 1024:.1f} MB")
+    print(f"  ✓ Compression ratio: {compression_ratio:.1f}%")
+    print(f"  ✓ Archive saved: {zip_path}")
+    print("="*70 + "\n")
+
 # Run the dereferencing
 dist_folder = Path(DISTPATH) / 'predict_keys'
 if dist_folder.exists():
     dereference_symlinks(dist_folder)
+    create_zip_archive(dist_folder, 'predict_keys')
