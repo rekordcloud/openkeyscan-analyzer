@@ -56,8 +56,8 @@ def main():
     PRIMARY_BASE_URL = "https://www.cp.jku.at/datasets/giantsteps/backup/"
     BACKUP_BASE_URL = "https://geo-samples.beatport.com/lofi/"
 
-    # Get first 50 MD5 files (sorted)
-    md5_files = sorted(md5_dir.glob('*.md5'))[:50]
+    # Get all MD5 files (sorted)
+    md5_files = sorted(md5_dir.glob('*.md5'))
 
     print(f"Found {len(md5_files)} files to download\n")
 
