@@ -36,14 +36,16 @@ except ImportError:
 class ServerTester:
     """Test harness for the key detection server."""
 
-    def __init__(self, server_script='predict_keys_server.py'):
+    def __init__(self, server_script='predict_keys_server.py', workers=1):
         """
         Initialize the tester.
 
         Args:
             server_script (str): Path to the server script
+            workers (int): Number of worker threads for the server
         """
         self.server_script = server_script
+        self.workers = workers
         self.process = None
         self.results = {}
         self.results_lock = threading.Lock()
@@ -52,14 +54,14 @@ class ServerTester:
 
     def start_server(self):
         """Start the server process."""
-        print("Starting key detection server...")
+        print(f"Starting key detection server with {self.workers} worker(s)...")
         sys.stdout.flush()
 
         # Use venv python if available, otherwise system python
         python_cmd = './venv/bin/python3' if os.path.exists('./venv/bin/python3') else 'python3'
 
         self.process = subprocess.Popen(
-            [python_cmd, self.server_script],
+            [python_cmd, self.server_script, '-w', str(self.workers)],
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -253,6 +255,8 @@ def main():
                         help="Number of random MP3 files to test (default: 10)")
     parser.add_argument('-d', '--directory', type=str, default='~/Music/spotify',
                         help="Directory to search for MP3 files (default: ~/Music/spotify)")
+    parser.add_argument('-w', '--workers', type=int, default=1,
+                        help="Number of worker threads for the server (default: 1)")
     args = parser.parse_args()
 
     # Print memory tracking availability
@@ -261,7 +265,7 @@ def main():
         print("Install with: pip install psutil")
         print()
 
-    tester = ServerTester()
+    tester = ServerTester(workers=args.workers)
 
     try:
         # Start server
