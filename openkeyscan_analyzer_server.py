@@ -162,20 +162,56 @@ class KeyDetectionServer:
 
         self.running = True
 
+        # Pre-load models for all workers
+        self._preload_models()
+
+    def _preload_models(self):
+        """
+        Pre-load models for all worker threads during initialization.
+        Each thread loads its own model instance to avoid thread safety issues.
+        """
+        from concurrent.futures import as_completed
+
+        print(f"Pre-loading models for {self.num_workers} worker(s)...", file=sys.stderr)
+
+        def load_model_for_thread():
+            """Load model in the current thread and store in thread-local storage."""
+            thread_id = threading.current_thread().name
+            print(f"[Thread {thread_id}] Loading model from {self.model_path}...", file=sys.stderr)
+            self.thread_local.model = load_model(self.model_path, self.device)
+            print(f"[Thread {thread_id}] Model loaded on {self.device}", file=sys.stderr)
+            return thread_id
+
+        # Submit loading tasks to all worker threads
+        futures = []
+        for i in range(self.num_workers):
+            future = self.executor.submit(load_model_for_thread)
+            futures.append(future)
+
+        # Wait for all models to load
+        for future in as_completed(futures):
+            try:
+                thread_id = future.result()
+            except Exception as e:
+                print(f"Error loading model in thread: {e}", file=sys.stderr)
+                raise
+
+        print(f"All {self.num_workers} model(s) loaded successfully", file=sys.stderr)
+
     def get_model(self):
         """
         Get the model instance for the current thread.
-        Loads the model on first access per thread (lazy loading).
+        Model should already be loaded during initialization.
 
         Returns:
             KeyNet: The model instance for this thread
         """
         if not hasattr(self.thread_local, 'model'):
-            # This thread doesn't have a model yet - load it
+            # This shouldn't happen if _preload_models() worked correctly
+            # But as a fallback, load the model
             thread_id = threading.current_thread().name
-            print(f"[Thread {thread_id}] Loading model from {self.model_path}...", file=sys.stderr)
+            print(f"[Thread {thread_id}] WARNING: Model not pre-loaded, loading now...", file=sys.stderr)
             self.thread_local.model = load_model(self.model_path, self.device)
-            print(f"[Thread {thread_id}] Model loaded on {self.device}", file=sys.stderr)
 
         return self.thread_local.model
 

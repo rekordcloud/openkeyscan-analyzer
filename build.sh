@@ -38,9 +38,47 @@ echo "Output:"
 echo "  Executable: dist/openkeyscan-analyzer/openkeyscan-analyzer-server"
 echo "  Archive:    dist/openkeyscan-analyzer.zip"
 echo ""
+
+# Detect architecture (using Node.js naming convention)
+ARCH=$(uname -m)
+if [ "$ARCH" = "arm64" ]; then
+    ARCH_DIR="arm64"
+elif [ "$ARCH" = "x86_64" ]; then
+    ARCH_DIR="x64"
+else
+    echo "Warning: Unknown architecture '$ARCH', using as-is"
+    ARCH_DIR="$ARCH"
+fi
+
+# Move zip file to distribution directory
+DIST_DIR="$HOME/openkeyscan/build/lib/mac/$ARCH_DIR"
+ZIP_FILE="dist/openkeyscan-analyzer.zip"
+
+echo "Installing to distribution directory..."
+echo "  Architecture: $ARCH_DIR"
+echo "  Destination:  $DIST_DIR"
+echo ""
+
+# Create destination directory if it doesn't exist
+mkdir -p "$DIST_DIR"
+
+# Move the zip file, replacing any existing file
+if [ -f "$ZIP_FILE" ]; then
+    cp "$ZIP_FILE" "$DIST_DIR/openkeyscan-analyzer.zip"
+    echo "✓ Installed: $DIST_DIR/openkeyscan-analyzer.zip"
+else
+    echo "Error: ZIP file not found at $ZIP_FILE"
+    exit 1
+fi
+
+echo ""
+echo "======================================================================"
+echo "Installation Complete!"
+echo "======================================================================"
+echo ""
 echo "Test the build:"
 echo "  ./dist/openkeyscan-analyzer/openkeyscan-analyzer-server"
 echo ""
-echo "Or extract and distribute the zip file:"
-echo "  dist/openkeyscan-analyzer.zip"
+echo "Distribution package:"
+echo "  $DIST_DIR/openkeyscan-analyzer.zip"
 echo ""

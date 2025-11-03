@@ -348,9 +348,9 @@ python test_server.py
 ### Server Features
 
 1. **Thread-Safe**: Each worker thread loads its own model instance (default: 1 worker)
-2. **Memory Efficient**: Lazy model loading per thread (~200MB per worker)
+2. **Fast Startup**: Models pre-loaded during initialization - no delay on first request
 3. **Configurable Concurrency**: `-w` flag controls worker count (1-8 threads)
-4. **Fast**: ~0.41s per file average (tested with 10 files)
+4. **Fast Processing**: ~0.41-0.90s per file average (tested with 10 files)
 5. **Reliable**: Auto-restart capability via parent process
 6. **Async**: Non-blocking - returns results as they complete
 7. **Simple IPC**: Direct pipe communication, no network overhead
@@ -468,9 +468,10 @@ python openkeyscan_analyzer_server.py -w 2  # 2 workers = 2 model instances
 
 **Threading Model:**
 - **Default: 1 worker** (safest, lowest memory)
-- Each worker thread has its own model instance (lazy-loaded on first request)
+- Each worker thread has its own model instance (pre-loaded during startup)
 - No locks needed - true parallel processing if workers > 1
 - Increase workers for higher throughput, but monitor memory usage
+- All models are loaded before the "ready" message is sent
 
 ### Error Handling
 
@@ -678,6 +679,7 @@ Ensure these are gitignored:
 21. ✅ **Changed default workers from 4 to 1** - reduces memory usage and prevents crashes
 22. ✅ **Added memory tracking to test_server.py** - psutil integration with granular per-file tracking
 23. ✅ **Reduced peak memory usage** - 1.1GB (1 worker) vs 1.3GB (4 workers) for 10 files
+24. ✅ **Changed to eager model loading** - all worker models pre-loaded during startup instead of lazy loading on first request
 
 ### Known Working Configuration
 - Python: 3.13.2
@@ -690,4 +692,4 @@ Ensure these are gitignored:
 
 ---
 
-*Last Updated: 2025-11-01*
+*Last Updated: 2025-11-03*
