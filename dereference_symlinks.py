@@ -71,7 +71,7 @@ if __name__ == "__main__":
     if len(sys.argv) > 1:
         dist_folder = sys.argv[1]
     else:
-        dist_folder = "dist/predict_keys"
+        dist_folder = "dist/openkeyscan-analyzer"
 
     print(f"Dereferencing symlinks in: {dist_folder}")
     print("=" * 70)

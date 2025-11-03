@@ -27,7 +27,7 @@ import time
 from dataset import CAMELOT_MAPPING
 from eval import load_model
 
-# Get resource path helper from predict_keys
+# Get resource path helper from openkeyscan_analyzer
 def get_resource_path(relative_path):
     """Get absolute path to resource, works for dev and PyInstaller."""
     try:

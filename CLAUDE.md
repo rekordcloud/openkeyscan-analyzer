@@ -25,7 +25,7 @@ This file contains technical documentation and important context about this proj
 
 ### Core Components
 
-1. **predict_keys.py** - Main entry point for key prediction
+1. **openkeyscan_analyzer.py** - Main entry point for key prediction
    - Command-line interface for predicting keys from MP3 files
    - Uses librosa for audio loading (modified from original torchaudio)
    - Preprocesses audio to CQT spectrograms
@@ -47,7 +47,7 @@ This file contains technical documentation and important context about this proj
 
 5. **train.py** - Training script (not modified in recent work)
 
-6. **predict_keys_server.py** - Long-running server mode (NEW)
+6. **openkeyscan_analyzer_server.py** - Long-running server mode (NEW)
    - stdin/stdout JSON protocol for IPC
    - Loads model once, keeps in memory for efficiency
    - ThreadPoolExecutor for concurrent audio preprocessing
@@ -74,7 +74,7 @@ This file contains technical documentation and important context about this proj
 
 ### 1. Audio Loading Backend Change
 
-**File:** `predict_keys.py:66-68`
+**File:** `openkeyscan_analyzer.py:66-68`
 
 **Original:**
 ```python
@@ -97,7 +97,7 @@ waveform = waveform.astype(np.float32)
 
 ### 2. Resource Path Resolution for PyInstaller
 
-**File:** `predict_keys.py:12-29`
+**File:** `openkeyscan_analyzer.py:12-29`
 
 **Added:**
 ```python
@@ -116,7 +116,7 @@ def get_resource_path(relative_path):
 
 ### 3. PyInstaller Spec File with Auto-Dereferencing
 
-**File:** `predict_keys.spec:72-127`
+**File:** `openkeyscan_analyzer.spec:72-127`
 
 **Key Features:**
 - Bundles `checkpoints/keynet.pt` model file
@@ -182,14 +182,14 @@ pip install -r requirements.txt
 pipenv install --dev
 
 # Build executable
-pyinstaller predict_keys.spec
+pyinstaller openkeyscan_analyzer.spec
 ```
 
 ### What Happens During Build
 
 1. **Analysis**: PyInstaller analyzes dependencies and imports
 2. **Collection**: Gathers all required Python modules and binaries
-3. **Bundling**: Creates `dist/predict_keys/` folder with:
+3. **Bundling**: Creates `dist/openkeyscan-analyzer/` folder with:
    - Executable binary
    - Python runtime and libraries
    - All dependencies (PyTorch, librosa, etc.)
@@ -198,7 +198,7 @@ pyinstaller predict_keys.spec
 
 ### Build Output
 
-- **Location**: `dist/predict_keys/`
+- **Location**: `dist/openkeyscan-analyzer/`
 - **Size**: ~780MB (uncompressed), ~224MB (zipped)
 - **Portability**: Fully self-contained, can run on any macOS system
 
@@ -233,15 +233,15 @@ The following symlinks are automatically replaced with actual files:
 
 ```
 MusicalKeyCNN-main/
-├── predict_keys.py          # Main CLI entry point
-├── predict_keys_server.py   # Server mode (stdin/stdout JSON protocol)
+├── openkeyscan_analyzer.py          # Main CLI entry point
+├── openkeyscan_analyzer_server.py   # Server mode (stdin/stdout JSON protocol)
 ├── test_server.py           # Server test harness
 ├── model.py                 # CNN architecture
 ├── dataset.py               # Dataset and Camelot mapping
 ├── eval.py                  # Evaluation utilities
 ├── train.py                 # Training script
 ├── preprocess_data.py       # Dataset preprocessing
-├── predict_keys.spec        # PyInstaller configuration (both CLI and server)
+├── openkeyscan_analyzer.spec        # PyInstaller configuration (both CLI and server)
 ├── dereference_symlinks.py  # Manual symlink dereferencing utility
 ├── Pipfile                  # Pipenv dependencies
 ├── requirements.txt         # Pip dependencies (legacy)
@@ -250,9 +250,8 @@ MusicalKeyCNN-main/
 ├── checkpoints/
 │   └── keynet.pt           # Trained model weights (1.8MB)
 └── dist/                   # Build output (gitignored)
-    └── predict_keys/       # Standalone executable distribution
-        ├── predict_keys           # CLI executable
-        └── predict_keys_server    # Server executable
+    └── openkeyscan-analyzer/       # Standalone executable distribution
+        └── openkeyscan-analyzer-server    # Server executable
 ```
 
 ---
@@ -261,42 +260,42 @@ MusicalKeyCNN-main/
 
 ### Predict Key for Single File
 ```sh
-python predict_keys.py -f path/to/song.mp3
+python openkeyscan_analyzer.py -f path/to/song.mp3
 ```
 
 ### Predict Keys for Folder
 ```sh
-python predict_keys.py -f path/to/music/folder/
+python openkeyscan_analyzer.py -f path/to/music/folder/
 ```
 
 ### Using Custom Model
 ```sh
-python predict_keys.py -f song.mp3 -m path/to/custom_model.pt
+python openkeyscan_analyzer.py -f song.mp3 -m path/to/custom_model.pt
 ```
 
 ### Force CPU Usage
 ```sh
-python predict_keys.py -f song.mp3 --device cpu
+python openkeyscan_analyzer.py -f song.mp3 --device cpu
 ```
 
 ### Build and Distribute
 ```sh
 # Build
-pyinstaller predict_keys.spec
+pyinstaller openkeyscan_analyzer.spec
 
 # Test
-./dist/predict_keys/predict_keys -f test.mp3
+./dist/openkeyscan-analyzer/openkeyscan-analyzer-server
 
 # Package for distribution
 cd dist
-zip -r predict_keys.zip predict_keys/
+zip -r openkeyscan-analyzer.zip openkeyscan-analyzer/
 ```
 
 ### Server Mode (Electron/IPC Integration)
 
 ```sh
 # Start server in development
-python predict_keys_server.py
+python openkeyscan_analyzer_server.py
 
 # Test server with 10 random files
 python test_server.py
@@ -363,7 +362,7 @@ const { spawn } = require('child_process');
 const readline = require('readline');
 
 // Spawn the server
-const server = spawn('./dist/predict_keys/predict_keys_server');
+const server = spawn('./dist/openkeyscan-analyzer/openkeyscan-analyzer-server');
 
 // Set up line reader for responses
 const rl = readline.createInterface({
@@ -454,13 +453,13 @@ Average: 0.44s per file
 
 ```sh
 # Start server with custom model
-python predict_keys_server.py -m path/to/model.pt
+python openkeyscan_analyzer_server.py -m path/to/model.pt
 
 # Force CPU usage
-python predict_keys_server.py --device cpu
+python openkeyscan_analyzer_server.py --device cpu
 
 # Adjust worker threads (default: 1, each loads own model)
-python predict_keys_server.py -w 2  # 2 workers = 2 model instances
+python openkeyscan_analyzer_server.py -w 2  # 2 workers = 2 model instances
 
 # Note: Each worker loads its own model instance to avoid thread safety issues
 # Memory usage = ~200MB per worker + preprocessing buffers
@@ -572,7 +571,7 @@ The included model (`keynet.pt`) achieves:
 **Solution:** This is resolved by using librosa.load() instead (already implemented)
 
 ### Issue: Executable doesn't work on other machines
-**Solution:** Ensure symlinks were dereferenced (automatic in spec file). Verify by running `find dist/predict_keys -type l` (should return nothing)
+**Solution:** Ensure symlinks were dereferenced (automatic in spec file). Verify by running `find dist/openkeyscan-analyzer -type l` (should return nothing)
 
 ### Issue: "FileNotFoundError" when running executable
 **Solution:** Use absolute paths, not tilde (~) expansion. The executable doesn't expand `~` like shells do.
@@ -606,22 +605,22 @@ The included model (`keynet.pt`) achieves:
 Always test after modifications:
 ```sh
 # Test in development environment
-python predict_keys.py -f test.mp3
+python openkeyscan_analyzer.py -f test.mp3
 
 # Test built executable
-./dist/predict_keys/predict_keys -f test.mp3
+./dist/openkeyscan-analyzer/openkeyscan-analyzer-server
 
 # Test distribution portability
 cd /tmp
-unzip path/to/predict_keys.zip
-./predict_keys/predict_keys -f test.mp3
+unzip path/to/openkeyscan-analyzer.zip
+./openkeyscan-analyzer/openkeyscan-analyzer-server
 ```
 
 ### Code Style
 - Follow existing patterns in codebase
 - Use type hints where applicable
 - Document functions with docstrings
-- Keep predict_keys.py compatible with both dev and PyInstaller environments
+- Keep openkeyscan_analyzer.py compatible with both dev and PyInstaller environments
 
 ### Git Ignore
 Ensure these are gitignored:
@@ -665,7 +664,7 @@ Ensure these are gitignored:
 7. ✅ Uncommented torch/torchaudio in requirements.txt for legacy support
 8. ✅ Created standalone dereference_symlinks.py utility
 9. ✅ Verified executable portability on macOS ARM64
-10. ✅ **Implemented server mode (predict_keys_server.py)** for Electron/IPC integration
+10. ✅ **Implemented server mode (openkeyscan_analyzer_server.py)** for Electron/IPC integration
 11. ✅ Created stdin/stdout JSON protocol (NDJSON) for async communication
 12. ✅ Added ThreadPoolExecutor for concurrent audio preprocessing
 13. ✅ Created test_server.py for validation and testing

@@ -2,7 +2,7 @@
 """
 Test harness for key detection server with memory tracking.
 
-Spawns predict_keys_server.py and sends requests for random MP3 files.
+Spawns openkeyscan_analyzer_server.py and sends requests for random MP3 files.
 Logs results in format: "Filename.mp3: Result key"
 
 Usage:
@@ -36,7 +36,7 @@ except ImportError:
 class ServerTester:
     """Test harness for the key detection server."""
 
-    def __init__(self, server_script='predict_keys_server.py', workers=1):
+    def __init__(self, server_script='openkeyscan_analyzer_server.py', workers=1):
         """
         Initialize the tester.
 

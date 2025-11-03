@@ -62,8 +62,8 @@ pip install -r requirements.txt
 You can analyze any individual .mp3 or a folder of .mp3 tracks using the provided model or your own trained model:
 
 ```sh
-python predict_keys.py -f path/to/your_song.mp3
-python predict_keys.py -f path/to/your/music_folder/
+python openkeyscan_analyzer.py -f path/to/your_song.mp3
+python openkeyscan_analyzer.py -f path/to/your/music_folder/
 ```
 
 The script prints a summary table with:
@@ -91,16 +91,16 @@ You can create a standalone executable that bundles all dependencies and the tra
 
 2. Build the executable using the provided spec file:
    ```sh
-   pyinstaller predict_keys.spec
+   pyinstaller openkeyscan_analyzer.spec
    ```
    The build process automatically dereferences all symlinks, ensuring the distribution is portable and can be safely zipped or copied.
 
-3. The executable will be created in the `dist/predict_keys/` folder. You can run it directly:
+3. The executable will be created in the `dist/openkeyscan-analyzer/` folder. You can run the server directly:
    ```sh
-   ./dist/predict_keys/predict_keys -f path/to/your_song.mp3
+   ./dist/openkeyscan-analyzer/openkeyscan-analyzer-server
    ```
 
-4. The entire `dist/predict_keys/` folder can be copied to any macOS system and run without Python or any dependencies installed.
+4. The entire `dist/openkeyscan-analyzer/` folder can be copied to any macOS system and run without Python or any dependencies installed.
 
 **Note:**
 - The bundled application includes the trained model (`keynet.pt`), so you don't need to specify the model path

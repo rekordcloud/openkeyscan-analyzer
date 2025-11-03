@@ -27,7 +27,7 @@ echo "Starting PyInstaller build..."
 echo ""
 
 # Run PyInstaller with --noconfirm to skip prompts
-pyinstaller --noconfirm predict_keys.spec
+pyinstaller --noconfirm openkeyscan_analyzer.spec
 
 echo ""
 echo "======================================================================"
@@ -35,12 +35,12 @@ echo "Build Complete!"
 echo "======================================================================"
 echo ""
 echo "Output:"
-echo "  Executable: dist/predict_keys/predict_keys_server"
-echo "  Archive:    dist/predict_keys.zip"
+echo "  Executable: dist/openkeyscan-analyzer/openkeyscan-analyzer-server"
+echo "  Archive:    dist/openkeyscan-analyzer.zip"
 echo ""
 echo "Test the build:"
-echo "  ./dist/predict_keys/predict_keys_server"
+echo "  ./dist/openkeyscan-analyzer/openkeyscan-analyzer-server"
 echo ""
 echo "Or extract and distribute the zip file:"
-echo "  dist/predict_keys.zip"
+echo "  dist/openkeyscan-analyzer.zip"
 echo ""

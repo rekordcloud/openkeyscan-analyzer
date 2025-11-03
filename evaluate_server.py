@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Evaluate predict_keys_server.py on GiantSteps Key Dataset.
+Evaluate openkeyscan_analyzer_server.py on GiantSteps Key Dataset.
 
 Runs the server, sends audio files, collects predictions, and compares
 against ground truth using MIREX evaluation metrics.
@@ -62,7 +62,7 @@ def load_ground_truth(dataset_dir, file_ids):
 
 def start_server(model_path=None, workers=1):
     """
-    Start predict_keys_server.py as a subprocess.
+    Start openkeyscan_analyzer_server.py as a subprocess.
 
     Args:
         model_path (str): Path to model checkpoint (optional)
@@ -71,7 +71,7 @@ def start_server(model_path=None, workers=1):
     Returns:
         subprocess.Popen: Server process
     """
-    cmd = [sys.executable, 'predict_keys_server.py', '-w', str(workers)]
+    cmd = [sys.executable, 'openkeyscan_analyzer_server.py', '-w', str(workers)]
 
     if model_path:
         cmd.extend(['-m', model_path])
