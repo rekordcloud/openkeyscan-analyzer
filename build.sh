@@ -10,9 +10,16 @@ echo "Building Musical Key CNN Standalone Application"
 echo "======================================================================"
 echo ""
 
-# Check if pyinstaller is available
-if ! command -v pyinstaller &> /dev/null; then
-    echo "Error: pyinstaller not found"
+# Check if pipenv is available
+if ! command -v pipenv &> /dev/null; then
+    echo "Error: pipenv not found"
+    echo "Install it with: pip install pipenv"
+    exit 1
+fi
+
+# Check if pyinstaller is available in pipenv environment
+if ! pipenv run which pyinstaller &> /dev/null; then
+    echo "Error: pyinstaller not found in pipenv environment"
     echo "Install it with: pipenv install --dev"
     exit 1
 fi
@@ -26,8 +33,8 @@ fi
 echo "Starting PyInstaller build..."
 echo ""
 
-# Run PyInstaller with --noconfirm to skip prompts
-pyinstaller --noconfirm openkeyscan_analyzer.spec
+# Run PyInstaller with --noconfirm to skip prompts (via pipenv)
+pipenv run pyinstaller --noconfirm openkeyscan_analyzer.spec
 
 echo ""
 echo "======================================================================"
