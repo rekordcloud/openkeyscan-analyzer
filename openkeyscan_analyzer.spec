@@ -45,7 +45,7 @@ exe_server = EXE(
     a.scripts,
     [],
     exclude_binaries=True,
-    name='openkeyscan-analyzer-server',
+    name='openkeyscan-analyzer',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

@@ -97,7 +97,7 @@ You can create a standalone executable that bundles all dependencies and the tra
 
 3. The executable will be created in the `dist/openkeyscan-analyzer/` folder. You can run the server directly:
    ```sh
-   ./dist/openkeyscan-analyzer/openkeyscan-analyzer-server
+   ./dist/openkeyscan-analyzer/openkeyscan-analyzer
    ```
 
 4. The entire `dist/openkeyscan-analyzer/` folder can be copied to any macOS system and run without Python or any dependencies installed.

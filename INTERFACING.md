@@ -2,7 +2,7 @@
 
 ## Overview
 
-The `openkeyscan-analyzer-server` is a long-running Python process that detects musical keys in MP3 files. It communicates via **stdin/stdout using line-delimited JSON (NDJSON)** protocol, making it ideal for Electron IPC integration.
+The `openkeyscan-analyzer` is a long-running Python process that detects musical keys in MP3 files. It communicates via **stdin/stdout using line-delimited JSON (NDJSON)** protocol, making it ideal for Electron IPC integration.
 
 ---
 
@@ -241,8 +241,8 @@ const { app } = require('electron');
 
 // Initialize service
 const serverPath = app.isPackaged
-  ? path.join(process.resourcesPath, 'openkeyscan-analyzer-server')
-  : path.join(__dirname, '../dist/openkeyscan-analyzer/openkeyscan-analyzer-server');
+  ? path.join(process.resourcesPath, 'openkeyscan-analyzer')
+  : path.join(__dirname, '../dist/openkeyscan-analyzer/openkeyscan-analyzer');
 
 const keyService = new KeyDetectionService(serverPath);
 
@@ -468,7 +468,7 @@ class RobustKeyDetectionService extends KeyDetectionService {
 ## Summary
 
 **Key Points for Electron Integration:**
-1. Spawn `openkeyscan-analyzer-server` as child process
+1. Spawn `openkeyscan-analyzer` as child process
 2. Use `readline` to parse line-delimited JSON from stdout
 3. Send requests to stdin (one JSON per line)
 4. Use UUIDs to match async responses to requests

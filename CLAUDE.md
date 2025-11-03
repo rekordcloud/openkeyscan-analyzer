@@ -251,7 +251,7 @@ MusicalKeyCNN-main/
 │   └── keynet.pt           # Trained model weights (1.8MB)
 └── dist/                   # Build output (gitignored)
     └── openkeyscan-analyzer/       # Standalone executable distribution
-        └── openkeyscan-analyzer-server    # Server executable
+        └── openkeyscan-analyzer    # Server executable
 ```
 
 ---
@@ -284,7 +284,7 @@ python openkeyscan_analyzer.py -f song.mp3 --device cpu
 pyinstaller openkeyscan_analyzer.spec
 
 # Test
-./dist/openkeyscan-analyzer/openkeyscan-analyzer-server
+./dist/openkeyscan-analyzer/openkeyscan-analyzer
 
 # Package for distribution
 cd dist
@@ -362,7 +362,7 @@ const { spawn } = require('child_process');
 const readline = require('readline');
 
 // Spawn the server
-const server = spawn('./dist/openkeyscan-analyzer/openkeyscan-analyzer-server');
+const server = spawn('./dist/openkeyscan-analyzer/openkeyscan-analyzer');
 
 // Set up line reader for responses
 const rl = readline.createInterface({
@@ -609,12 +609,12 @@ Always test after modifications:
 python openkeyscan_analyzer.py -f test.mp3
 
 # Test built executable
-./dist/openkeyscan-analyzer/openkeyscan-analyzer-server
+./dist/openkeyscan-analyzer/openkeyscan-analyzer
 
 # Test distribution portability
 cd /tmp
 unzip path/to/openkeyscan-analyzer.zip
-./openkeyscan-analyzer/openkeyscan-analyzer-server
+./openkeyscan-analyzer/openkeyscan-analyzer
 ```
 
 ### Code Style
