@@ -58,7 +58,7 @@ else
 fi
 
 # Move zip file to distribution directory
-DIST_DIR="$HOME/openkeyscan/build/lib/mac/$ARCH_DIR"
+DIST_DIR="$HOME/workspace/openkeyscan/build/lib/mac/$ARCH_DIR"
 ZIP_FILE="dist/openkeyscan-analyzer.zip"
 
 echo "Installing to distribution directory..."
