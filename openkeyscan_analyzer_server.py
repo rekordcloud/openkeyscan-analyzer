@@ -12,7 +12,7 @@ Protocol:
   Ready:    {"type": "ready"}
   Heartbeat: {"type": "heartbeat"}
 
-Supported audio formats: MP3, WAV, FLAC, OGG, M4A, AAC, AIFF, AU
+Supported audio formats: MP3, MP4, WAV, FLAC, OGG, M4A, AAC, AIFF, AU
 """
 
 import sys
@@ -31,8 +31,8 @@ from eval import load_model
 
 # Supported audio formats
 # Native formats (via PySoundFile): WAV, FLAC, OGG
-# Compressed formats (via audioread): MP3, M4A, AAC, AIFF, AU
-SUPPORTED_FORMATS = {'.mp3', '.wav', '.flac', '.ogg', '.m4a', '.aac', '.aiff', '.au'}
+# Compressed formats (via audioread): MP3, MP4, M4A, AAC, AIFF, AU
+SUPPORTED_FORMATS = {'.mp3', '.mp4', '.wav', '.flac', '.ogg', '.m4a', '.aac', '.aiff', '.au'}
 
 # Get resource path helper from openkeyscan_analyzer
 def get_resource_path(relative_path):
@@ -49,7 +49,7 @@ def preprocess_audio(audio_path, sample_rate=44100, n_bins=105, hop_length=8820)
     Loads an audio file, converts to mono, resamples, and extracts a log-magnitude CQT spectrogram.
 
     Args:
-        audio_path (Path): Path to audio file (supports MP3, WAV, FLAC, OGG, M4A, AAC, AIFF, AU).
+        audio_path (Path): Path to audio file (supports MP3, MP4, WAV, FLAC, OGG, M4A, AAC, AIFF, AU).
         sample_rate (int): Target sampling rate.
         n_bins (int): Number of CQT bins.
         hop_length (int): Hop length for CQT.

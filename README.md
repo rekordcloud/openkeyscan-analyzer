@@ -23,7 +23,7 @@ This repository implements a CNN model for musical key detection. It provides sc
 - Preprocess datasets (extract CQT spectrograms, prepare annotations, augment with pitch shifts)
 - Train the model from scratch
 - Evaluate model performance with [MIREX key evaluation metrics](https://www.music-ir.org/mirex/wiki/2025:Audio_Key_Detection)
-- Predict keys for custom .mp3 files
+- Predict keys for audio files (supports MP3, MP4, WAV, FLAC, OGG, M4A, AAC, AIFF, AU)
 
 ---
 
@@ -59,7 +59,7 @@ pip install -r requirements.txt
 
 ## Key Prediction for Your Own Songs
 
-You can analyze any individual .mp3 or a folder of .mp3 tracks using the provided model or your own trained model:
+You can analyze audio files in multiple formats (MP3, MP4, WAV, FLAC, OGG, M4A, AAC, AIFF, AU) or entire folders using the provided model or your own trained model:
 
 ```sh
 python openkeyscan_analyzer.py -f path/to/your_song.mp3
@@ -106,8 +106,8 @@ You can create a standalone executable that bundles all dependencies and the tra
 - The bundled application includes the trained model (`keynet.pt`), so you don't need to specify the model path
 - The executable folder is approximately 780MB due to PyTorch, librosa, and scientific computing dependencies (numpy, scipy, scikit-learn)
 - The spec file automatically replaces all symlinks with actual files during the build process, making the distribution fully portable
-- On **macOS**, MP3 decoding uses native Core Audio frameworks, so no additional dependencies are needed
-- For **Linux/Windows** distributions, you would need to bundle FFmpeg binaries or ensure FFmpeg is installed on the target system
+- On **macOS**, all supported audio formats (MP3, MP4, WAV, FLAC, OGG, M4A, AAC, AIFF, AU) use native Core Audio frameworks, so no additional dependencies are needed
+- For **Linux/Windows** distributions, you would need to bundle FFmpeg binaries or ensure FFmpeg is installed on the target system for compressed format support
 
 ## Dataset Preparation
 
