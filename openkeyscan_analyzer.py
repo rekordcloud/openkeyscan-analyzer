@@ -9,6 +9,11 @@ import numpy as np
 from dataset import CAMELOT_MAPPING
 from eval import load_model
 
+# Supported audio formats
+# Native formats (via PySoundFile): WAV, FLAC, OGG
+# Compressed formats (via audioread): MP3, M4A, AAC, AIFF, AU
+SUPPORTED_FORMATS = {'.mp3', '.wav', '.flac', '.ogg', '.m4a', '.aac', '.aiff', '.au'}
+
 def get_resource_path(relative_path):
     """
     Get absolute path to resource, works for dev and for PyInstaller bundled app.
@@ -35,47 +40,55 @@ def parse_args():
         args: Parsed arguments.
     """
     default_model_path = get_resource_path('checkpoints/keynet.pt')
-    parser = argparse.ArgumentParser(description="Predict Camelot key for single or multiple mp3 files.")
+    formats_str = ', '.join(sorted(SUPPORTED_FORMATS))
+    parser = argparse.ArgumentParser(description="Predict Camelot key for single or multiple audio files.")
     parser.add_argument('-f', '--path', type=str, required=True,
-                        help="Path to an .mp3 file or folder containing .mp3 files.")
+                        help=f"Path to an audio file or folder containing audio files. Supported formats: {formats_str}")
     parser.add_argument('-m', '--model_path', type=str, default=str(default_model_path),
                         help="Path to the trained model checkpoint (.pt).")
     parser.add_argument('--device', type=str, default=None,
                         help="Device to use: 'cpu' or 'cuda'. If not given, uses CUDA if available.")
     return parser.parse_args()
 
-def get_mp3_list(path):
+def get_audio_list(path):
     """
-    Returns a list of mp3 files from a folder or a single file.
+    Returns a list of audio files from a folder or a single file.
     Args:
-        path (str or Path): Path to .mp3 file or directory.
+        path (str or Path): Path to audio file or directory.
 
     Returns:
-        List[Path]: List of mp3 file Paths.
+        List[Path]: List of audio file Paths.
 
     Raises:
-        ValueError: If file is not .mp3 or folder contains none.
+        ValueError: If file format is not supported or folder contains no supported files.
     """
     path = Path(path)
     if path.is_file():
-        if path.suffix.lower() != ".mp3":
-            raise ValueError(f"File {path} is not a .mp3 file.")
+        if path.suffix.lower() not in SUPPORTED_FORMATS:
+            formats_str = ', '.join(sorted(SUPPORTED_FORMATS))
+            raise ValueError(f"File {path} format not supported. Supported formats: {formats_str}")
         return [path]
     elif path.is_dir():
-        files = list(path.glob("*.mp3"))
+        # Collect all files with supported extensions
+        files = []
+        for fmt in SUPPORTED_FORMATS:
+            files.extend(path.glob(f"*{fmt}"))
+            files.extend(path.glob(f"*{fmt.upper()}"))  # Also match uppercase extensions
+
         if not files:
-            raise ValueError(f"No .mp3 files found in {path}")
-        return files
+            formats_str = ', '.join(sorted(SUPPORTED_FORMATS))
+            raise ValueError(f"No supported audio files found in {path}. Supported formats: {formats_str}")
+        return sorted(files)  # Sort for consistent ordering
     else:
         raise FileNotFoundError(f"{path} is not a valid file or folder.")
 
-def preprocess_mp3(mp3_path, sample_rate=44100, n_bins=105, hop_length=8820):
+def preprocess_audio(audio_path, sample_rate=44100, n_bins=105, hop_length=8820):
     """
-    Loads an mp3, converts to mono, resamples, and extracts a log-magnitude CQT spectrogram.
+    Loads an audio file, converts to mono, resamples, and extracts a log-magnitude CQT spectrogram.
     Then slices result as in MTG preprocessed dataset (removes last frequency bin and converts to torch tensor).
 
     Args:
-        mp3_path (Path): Path to .mp3 file.
+        audio_path (Path): Path to audio file (supports MP3, WAV, FLAC, OGG, M4A, AAC, AIFF, AU).
         sample_rate (int): Target sampling rate for audio.
         n_bins (int): Number of CQT bins.
         hop_length (int): Hop length for CQT.
@@ -83,8 +96,8 @@ def preprocess_mp3(mp3_path, sample_rate=44100, n_bins=105, hop_length=8820):
     Returns:
         torch.Tensor: Shape (1, freq_bins, time_frames), ready for model input.
     """
-    # Use librosa to load and resample audio (avoids torchcodec dependency)
-    waveform, sr = librosa.load(mp3_path, sr=sample_rate, mono=True)
+    # Use librosa to load and resample audio (supports multiple formats via soundfile/audioread)
+    waveform, sr = librosa.load(audio_path, sr=sample_rate, mono=True)
     waveform = waveform.astype(np.float32)
 
     cqt = librosa.cqt(waveform, sr=sample_rate, hop_length=hop_length, n_bins=n_bins, bins_per_octave=24, fmin=65)
@@ -126,7 +139,7 @@ def main():
     device = torch.device(args.device) if args.device else torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = load_model(args.model_path, device)
 
-    mp3_files = get_mp3_list(args.path)
+    audio_files = get_audio_list(args.path)
 
     print("="*70)
     print("{:^70}".format("Key Prediction Results"))
@@ -134,9 +147,9 @@ def main():
     print(f"{'File':<28} | {'ID':^5} | {'Camelot':^8} | {'Key':^20}")
     print("-"*70)
 
-    for mp3_path in mp3_files:
+    for audio_path in audio_files:
         try:
-            spec_tensor = preprocess_mp3(mp3_path)
+            spec_tensor = preprocess_audio(audio_path)
             # Torch shape: (1, freq, time); batchify and to device
             spec_tensor = spec_tensor.to(device)
             spec_tensor = spec_tensor.unsqueeze(0) if spec_tensor.ndim == 3 else spec_tensor  # Add batch dimension if needed
@@ -147,12 +160,12 @@ def main():
 
             camelot_str, key_text = camelot_output(pred)
 
-            print(f"{mp3_path.name:<28} | {pred:^5} | {camelot_str:^8} | {key_text:^20}")
+            print(f"{audio_path.name:<28} | {pred:^5} | {camelot_str:^8} | {key_text:^20}")
         except Exception as e:
-            print(f"Error processing {mp3_path.name}: {e}")
-    
+            print(f"Error processing {audio_path.name}: {e}")
+
     print("="*70)
-    print(f"Total files processed: {len(mp3_files)}")
+    print(f"Total files processed: {len(audio_files)}")
     print("="*70)
 
 if __name__ == "__main__":

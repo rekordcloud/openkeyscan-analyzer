@@ -6,10 +6,15 @@ This file contains technical documentation and important context about this proj
 
 ## Project Overview
 
-**Musical Key CNN** is a convolutional neural network-based system for musical key detection and classification. It predicts the musical key of audio files (MP3) using the Camelot Wheel notation system (1A-12A for minor keys, 1B-12B for major keys).
+**Musical Key CNN** is a convolutional neural network-based system for musical key detection and classification. It predicts the musical key of audio files using the Camelot Wheel notation system (1A-12A for minor keys, 1B-12B for major keys).
+
+**Supported Audio Formats:**
+- Native (via PySoundFile): WAV, FLAC, OGG
+- Compressed (via audioread): MP3, M4A, AAC, AIFF, AU
 
 **Key Features:**
-- Predicts musical keys for individual MP3 files or entire folders
+- Predicts musical keys for individual audio files or entire folders
+- Supports 8 common audio formats (MP3, WAV, FLAC, OGG, M4A, AAC, AIFF, AU)
 - Uses CNN architecture based on Korzeniowski & Widmer (2018)
 - Outputs both Camelot notation (e.g., "9A") and traditional key notation (e.g., "E minor")
 - Can be packaged as a standalone executable for distribution
@@ -26,7 +31,8 @@ This file contains technical documentation and important context about this proj
 ### Core Components
 
 1. **openkeyscan_analyzer.py** - Main entry point for key prediction
-   - Command-line interface for predicting keys from MP3 files
+   - Command-line interface for predicting keys from audio files
+   - Supports 8 audio formats: MP3, WAV, FLAC, OGG, M4A, AAC, AIFF, AU
    - Uses librosa for audio loading (modified from original torchaudio)
    - Preprocesses audio to CQT spectrograms
    - Outputs formatted results with Camelot notation
@@ -62,6 +68,9 @@ This file contains technical documentation and important context about this proj
 ### Audio Processing Pipeline
 
 1. **Load audio**: librosa.load() with mono conversion and resampling to 44.1kHz
+   - Supports: MP3, WAV, FLAC, OGG, M4A, AAC, AIFF, AU
+   - Native formats (WAV, FLAC, OGG) use PySoundFile backend
+   - Compressed formats (MP3, M4A, AAC, etc.) use audioread backend
 2. **Compute CQT**: Constant-Q Transform with 105 bins, 24 bins/octave
 3. **Apply log scaling**: log1p() for magnitude compression
 4. **Slice spectrogram**: Remove last 2 time frames and last frequency bin
@@ -72,9 +81,9 @@ This file contains technical documentation and important context about this proj
 
 ## Important Modifications Made
 
-### 1. Audio Loading Backend Change
+### 1. Audio Loading Backend Change & Multi-Format Support
 
-**File:** `openkeyscan_analyzer.py:66-68`
+**File:** `openkeyscan_analyzer.py:99-101`
 
 **Original:**
 ```python
@@ -85,15 +94,22 @@ waveform, sr = torchaudio.load(mp3_path)
 
 **Modified:**
 ```python
-# Use librosa to load and resample audio (avoids torchcodec dependency)
-waveform, sr = librosa.load(mp3_path, sr=sample_rate, mono=True)
+# Use librosa to load and resample audio (supports multiple formats)
+waveform, sr = librosa.load(audio_path, sr=sample_rate, mono=True)
 waveform = waveform.astype(np.float32)
+```
+
+**Supported Formats:**
+```python
+SUPPORTED_FORMATS = {'.mp3', '.wav', '.flac', '.ogg', '.m4a', '.aac', '.aiff', '.au'}
 ```
 
 **Reason:**
 - torchaudio.load() requires torchcodec which has FFmpeg dependency issues
 - librosa.load() uses native audio backends (Core Audio on macOS) and is more reliable
 - Simplifies code by handling mono conversion and resampling in one call
+- Supports 8 common audio formats out of the box with no code changes needed
+- WAV/FLAC/OGG work natively via soundfile, compressed formats via audioread
 
 ### 2. Resource Path Resolution for PyInstaller
 
@@ -218,13 +234,17 @@ The following symlinks are automatically replaced with actual files:
 
 ### macOS
 - **Audio Backend**: Uses Core Audio (native) via librosa/audioread
-- **FFmpeg**: NOT required for MP3 decoding on macOS
+- **Native Formats**: WAV, FLAC, OGG work via PySoundFile (no dependencies)
+- **Compressed Formats**: MP3, M4A, AAC work via audioread + Core Audio
+- **FFmpeg**: NOT required for any format on macOS
 - **Distribution**: Executable is fully self-contained
 - **Tested On**: macOS 15.6.1 (Sequoia), ARM64 architecture
 
 ### Linux/Windows
-- **Audio Backend**: Would require FFmpeg for MP3 decoding
-- **FFmpeg**: Must be bundled or installed on target system
+- **Audio Backend**: Would require FFmpeg for compressed format decoding
+- **Native Formats**: WAV, FLAC, OGG work natively via PySoundFile
+- **Compressed Formats**: MP3, M4A, AAC require FFmpeg or GStreamer
+- **FFmpeg**: Must be bundled or installed on target system for MP3/M4A/AAC
 - **Distribution**: Not currently configured, would need platform-specific builds
 
 ---
@@ -260,11 +280,15 @@ MusicalKeyCNN-main/
 
 ### Predict Key for Single File
 ```sh
+# Works with any supported format: MP3, WAV, FLAC, OGG, M4A, AAC, AIFF, AU
 python openkeyscan_analyzer.py -f path/to/song.mp3
+python openkeyscan_analyzer.py -f path/to/song.wav
+python openkeyscan_analyzer.py -f path/to/song.flac
 ```
 
 ### Predict Keys for Folder
 ```sh
+# Automatically finds all supported audio files in the folder
 python openkeyscan_analyzer.py -f path/to/music/folder/
 ```
 
@@ -315,6 +339,7 @@ python test_server.py
 ```json
 {"id": "uuid-1234", "path": "/absolute/path/to/song.mp3"}
 ```
+*Note: Works with any supported format (MP3, WAV, FLAC, OGG, M4A, AAC, AIFF, AU)*
 
 **Success Response:**
 ```json
@@ -322,7 +347,7 @@ python test_server.py
   "id": "uuid-1234",
   "status": "success",
   "camelot": "9A",
-  "openkey": "1m",
+  "openkey": "2m",
   "key": "E minor",
   "class_id": 8,
   "filename": "song.mp3"
@@ -338,6 +363,7 @@ python test_server.py
   "filename": "song.mp3"
 }
 ```
+*Or: "Unsupported format. Supported: .aac, .aiff, .au, .flac, .m4a, .mp3, .ogg, .wav"*
 
 **System Messages:**
 ```json
@@ -655,7 +681,7 @@ Ensure these are gitignored:
 
 ## Changelog
 
-### Recent Modifications (2025-11-01)
+### Recent Modifications (2025-11-04)
 1. ✅ Changed audio loading from torchaudio to librosa (FFmpeg independence)
 2. ✅ Added resource path resolution for PyInstaller bundling
 3. ✅ Created PyInstaller spec file with model bundling
@@ -680,6 +706,10 @@ Ensure these are gitignored:
 22. ✅ **Added memory tracking to test_server.py** - psutil integration with granular per-file tracking
 23. ✅ **Reduced peak memory usage** - 1.1GB (1 worker) vs 1.3GB (4 workers) for 10 files
 24. ✅ **Changed to eager model loading** - all worker models pre-loaded during startup instead of lazy loading on first request
+25. ✅ **Added multi-format audio support** - now supports 8 formats: MP3, WAV, FLAC, OGG, M4A, AAC, AIFF, AU
+26. ✅ Renamed functions from `preprocess_mp3` to `preprocess_audio` and `get_mp3_list` to `get_audio_list`
+27. ✅ Updated both CLI and server modes to accept all supported formats
+28. ✅ Added `SUPPORTED_FORMATS` constant for centralized format management
 
 ### Known Working Configuration
 - Python: 3.13.2
@@ -689,7 +719,8 @@ Ensure these are gitignored:
 - numpy: 2.3.4
 - PyInstaller: 6.16.0
 - Platform: macOS 15.6.1 (Darwin 24.6.0), ARM64
+- Supported Audio Formats: MP3, WAV, FLAC, OGG, M4A, AAC, AIFF, AU (8 total)
 
 ---
 
-*Last Updated: 2025-11-03*
+*Last Updated: 2025-11-04*

@@ -6,11 +6,13 @@ Runs as a long-running process, loading the model once and keeping it in memory.
 Communicates via line-delimited JSON (NDJSON) protocol.
 
 Protocol:
-  Request:  {"id": "uuid", "path": "/absolute/path/file.mp3"}
-  Success:  {"id": "uuid", "status": "success", "camelot": "9A", "key": "E minor", "class_id": 8, "filename": "file.mp3"}
-  Error:    {"id": "uuid", "status": "error", "error": "Error message", "filename": "file.mp3"}
+  Request:  {"id": "uuid", "path": "/absolute/path/audio_file.mp3"}
+  Success:  {"id": "uuid", "status": "success", "camelot": "9A", "openkey": "2m", "key": "E minor", "class_id": 8, "filename": "audio_file.mp3"}
+  Error:    {"id": "uuid", "status": "error", "error": "Error message", "filename": "audio_file.mp3"}
   Ready:    {"type": "ready"}
   Heartbeat: {"type": "heartbeat"}
+
+Supported audio formats: MP3, WAV, FLAC, OGG, M4A, AAC, AIFF, AU
 """
 
 import sys
@@ -27,6 +29,11 @@ import time
 from dataset import CAMELOT_MAPPING
 from eval import load_model
 
+# Supported audio formats
+# Native formats (via PySoundFile): WAV, FLAC, OGG
+# Compressed formats (via audioread): MP3, M4A, AAC, AIFF, AU
+SUPPORTED_FORMATS = {'.mp3', '.wav', '.flac', '.ogg', '.m4a', '.aac', '.aiff', '.au'}
+
 # Get resource path helper from openkeyscan_analyzer
 def get_resource_path(relative_path):
     """Get absolute path to resource, works for dev and PyInstaller."""
@@ -37,12 +44,12 @@ def get_resource_path(relative_path):
     return base_path / relative_path
 
 
-def preprocess_mp3(mp3_path, sample_rate=44100, n_bins=105, hop_length=8820):
+def preprocess_audio(audio_path, sample_rate=44100, n_bins=105, hop_length=8820):
     """
-    Loads an mp3, converts to mono, resamples, and extracts a log-magnitude CQT spectrogram.
+    Loads an audio file, converts to mono, resamples, and extracts a log-magnitude CQT spectrogram.
 
     Args:
-        mp3_path (Path): Path to .mp3 file.
+        audio_path (Path): Path to audio file (supports MP3, WAV, FLAC, OGG, M4A, AAC, AIFF, AU).
         sample_rate (int): Target sampling rate.
         n_bins (int): Number of CQT bins.
         hop_length (int): Hop length for CQT.
@@ -50,8 +57,8 @@ def preprocess_mp3(mp3_path, sample_rate=44100, n_bins=105, hop_length=8820):
     Returns:
         torch.Tensor: Shape (1, freq_bins, time_frames), ready for model input.
     """
-    # Use librosa to load and resample audio
-    waveform, sr = librosa.load(mp3_path, sr=sample_rate, mono=True)
+    # Use librosa to load and resample audio (supports multiple formats via soundfile/audioread)
+    waveform, sr = librosa.load(audio_path, sr=sample_rate, mono=True)
     waveform = waveform.astype(np.float32)
 
     cqt = librosa.cqt(waveform, sr=sample_rate, hop_length=hop_length, n_bins=n_bins, bins_per_octave=24, fmin=65)
@@ -237,26 +244,27 @@ class KeyDetectionServer:
         file_path = request.get('path', '')
 
         try:
-            mp3_path = Path(file_path)
+            audio_path = Path(file_path)
 
-            if not mp3_path.exists():
+            if not audio_path.exists():
                 return {
                     'id': request_id,
                     'status': 'error',
                     'error': 'File not found',
-                    'filename': mp3_path.name
+                    'filename': audio_path.name
                 }
 
-            if mp3_path.suffix.lower() != '.mp3':
+            if audio_path.suffix.lower() not in SUPPORTED_FORMATS:
+                formats_str = ', '.join(sorted(SUPPORTED_FORMATS))
                 return {
                     'id': request_id,
                     'status': 'error',
-                    'error': 'Not an MP3 file',
-                    'filename': mp3_path.name
+                    'error': f'Unsupported format. Supported: {formats_str}',
+                    'filename': audio_path.name
                 }
 
             # Preprocess audio
-            spec_tensor = preprocess_mp3(mp3_path)
+            spec_tensor = preprocess_audio(audio_path)
             spec_tensor = spec_tensor.to(self.device)
             spec_tensor = spec_tensor.unsqueeze(0)  # Add batch dimension
 
@@ -277,7 +285,7 @@ class KeyDetectionServer:
                 'openkey': openkey_str,
                 'key': key_text,
                 'class_id': pred,
-                'filename': mp3_path.name
+                'filename': audio_path.name
             }
 
         except Exception as e:
