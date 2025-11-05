@@ -73,14 +73,24 @@ import torch
 import librosa
 import numpy as np
 
+# Import PyAV for fast MP3 decoding on Windows
+try:
+    import av
+    PYAV_AVAILABLE = True
+except ImportError:
+    PYAV_AVAILABLE = False
+
 # Import from existing modules
 from dataset import CAMELOT_MAPPING
 from eval import load_model
 
 # Supported audio formats
 # Native formats (via PySoundFile): WAV, FLAC, OGG
-# Compressed formats (via audioread): MP3, MP4, M4A, AAC, AIFF, AU
+# Compressed formats (via audioread/PyAV): MP3, MP4, M4A, AAC, AIFF, AU
 SUPPORTED_FORMATS = {'.mp3', '.mp4', '.wav', '.flac', '.ogg', '.m4a', '.aac', '.aiff', '.au'}
+
+# Formats that benefit from PyAV on Windows (compressed formats)
+PYAV_FORMATS = {'.mp3', '.mp4', '.m4a', '.aac'}
 
 # Get resource path helper from openkeyscan_analyzer
 def get_resource_path(relative_path):
@@ -90,6 +100,64 @@ def get_resource_path(relative_path):
     except AttributeError:
         base_path = Path(__file__).parent
     return base_path / relative_path
+
+
+def load_audio_pyav(audio_path, sample_rate=44100):
+    """
+    Load audio file using PyAV (faster than audioread on Windows).
+    
+    Args:
+        audio_path (Path): Path to audio file
+        sample_rate (int): Target sample rate
+        
+    Returns:
+        np.ndarray: Audio waveform as float32 array, shape (n_samples,)
+    """
+    profile = os.environ.get('PROFILE_PERFORMANCE', '0') == '1'
+    
+    if profile:
+        t0 = time.time()
+    
+    container = av.open(str(audio_path))
+    audio_stream = container.streams.audio[0]
+    
+    # Create resampler for target sample rate and mono
+    resampler = av.AudioResampler(
+        format='fltp',  # float32 planar
+        layout='mono',
+        rate=sample_rate
+    )
+    
+    frames = []
+    for frame in container.decode(audio_stream):
+        resampled = resampler.resample(frame)
+        # Convert to numpy array (shape: [channels, samples])
+        frame_array = resampled.to_ndarray()
+        frames.append(frame_array)
+    
+    container.close()
+    
+    # Concatenate all frames
+    if not frames:
+        raise ValueError(f"No audio frames found in {audio_path}")
+    
+    waveform = np.concatenate(frames, axis=1)
+    # Take first channel for mono (should already be mono from resampler, but be safe)
+    if waveform.ndim > 1:
+        waveform = waveform[0]
+    
+    # Ensure float32 and normalize to [-1, 1] range
+    waveform = waveform.astype(np.float32)
+    
+    # PyAV outputs in range [-1, 1] already, but ensure it's normalized
+    max_val = np.abs(waveform).max()
+    if max_val > 1.0:
+        waveform = waveform / max_val
+    
+    if profile:
+        print(f"    - load_audio_pyav: {time.time() - t0:.3f}s", file=sys.stderr)
+    
+    return waveform
 
 
 def preprocess_audio(audio_path, sample_rate=44100, n_bins=105, hop_length=8820):
@@ -106,14 +174,27 @@ def preprocess_audio(audio_path, sample_rate=44100, n_bins=105, hop_length=8820)
         torch.Tensor: Shape (1, freq_bins, time_frames), ready for model input.
     """
     profile = os.environ.get('PROFILE_PERFORMANCE', '0') == '1'
+    audio_path = Path(audio_path)
+    suffix = audio_path.suffix.lower()
 
-    # Use librosa to load and resample audio (supports multiple formats via soundfile/audioread)
-    if profile:
-        t0 = time.time()
-    waveform, sr = librosa.load(audio_path, sr=sample_rate, mono=True)
-    waveform = waveform.astype(np.float32)
-    if profile:
-        print(f"    - librosa.load: {time.time() - t0:.3f}s", file=sys.stderr)
+    # Use PyAV for compressed formats on Windows (much faster than audioread)
+    # On macOS, use librosa (which uses Core Audio - fast and native)
+    use_pyav = (
+        sys.platform == 'win32' and 
+        PYAV_AVAILABLE and 
+        suffix in PYAV_FORMATS
+    )
+    
+    if use_pyav:
+        waveform = load_audio_pyav(audio_path, sample_rate)
+    else:
+        # Use librosa for other formats or platforms (WAV, FLAC, OGG, or macOS)
+        if profile:
+            t0 = time.time()
+        waveform, sr = librosa.load(audio_path, sr=sample_rate, mono=True)
+        waveform = waveform.astype(np.float32)
+        if profile:
+            print(f"    - librosa.load: {time.time() - t0:.3f}s", file=sys.stderr)
 
     if profile:
         t0 = time.time()

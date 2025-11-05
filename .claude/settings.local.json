@@ -16,7 +16,11 @@
       "WebSearch",
       "Bash(find:*)",
       "WebFetch(domain:github.com)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(pyinstaller:*)",
+      "Bash(pipenv run pyinstaller:*)",
+      "Bash(python3:*)",
+      "Bash(./dist/openkeyscan-analyzer/openkeyscan-analyzer:*)"
     ],
     "deny": [],
     "ask": []

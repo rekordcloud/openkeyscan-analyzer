@@ -9,6 +9,7 @@ torchaudio = "*"
 librosa = "*"
 numpy = "*"
 tqdm = "*"
+av = "*"
 
 [dev-packages]
 pyinstaller = "*"
