@@ -275,10 +275,12 @@ MusicalKeyCNN-main/
 ├── preprocess_data.py       # Dataset preprocessing
 ├── openkeyscan_analyzer.spec        # PyInstaller configuration (both CLI and server)
 ├── dereference_symlinks.py  # Manual symlink dereferencing utility
+├── profile_performance.py   # Performance profiling script (standalone)
 ├── Pipfile                  # Pipenv dependencies
 ├── requirements.txt         # Pip dependencies (legacy)
 ├── README.md               # User documentation
 ├── CLAUDE.md               # This file (technical documentation)
+├── PERFORMANCE_INVESTIGATION.md  # Windows performance investigation
 ├── checkpoints/
 │   └── keynet.pt           # Trained model weights (1.8MB)
 └── dist/                   # Build output (gitignored)
@@ -539,12 +541,14 @@ python test_server.py --exe -d ~/Music -n 5
 
 **Performance Notes:**
 - **macOS**: ~0.44s per file (as documented in original tests)
-- **Windows**: ~20-21s per file (significantly slower, tested on Windows 10/MSYS2)
+- **Windows**: ~20-21s per file (**~45x slower**, tested on Windows 10/MSYS2)
 - Windows slowdown likely due to:
-  - MSYS2/Git Bash overhead
-  - Windows file I/O performance
-  - CPU differences
-  - librosa/numpy single-threaded performance on Windows
+  - **librosa.cqt() performance** (most likely bottleneck - heavy FFT computations)
+  - **numpy/scipy BLAS optimization** (Windows numpy may not use MKL/OpenBLAS)
+  - **librosa.load() audio decoding** (audioread backend performance)
+  - **MSYS2/Git Bash overhead** (emulation layer)
+- **See PERFORMANCE_INVESTIGATION.md** for detailed analysis and profiling instructions
+- **Profiling enabled**: Set `PROFILE_PERFORMANCE=1` environment variable to get timing breakdown
 
 ### Command-Line Options
 
@@ -788,6 +792,9 @@ Ensure these are gitignored:
 33. ✅ **Updated test_server.py** - added --exe flag to test built executables
 34. ✅ **Documented Windows performance** - ~20-21s per file (vs 0.44s on macOS)
 35. ✅ **Fixed Windows compatibility issues** - absolute paths, Python vs python3, encoding
+36. ✅ **Added performance profiling** (2025-11-05) - instrumented server with PROFILE_PERFORMANCE env var
+37. ✅ **Created PERFORMANCE_INVESTIGATION.md** - detailed analysis of Windows slowdown
+38. ✅ **Created profile_performance.py** - standalone profiling script for detailed timing analysis
 
 ### Known Working Configuration
 

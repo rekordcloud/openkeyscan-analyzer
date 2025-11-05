@@ -5,7 +5,18 @@
       "Bash(pipenv install:*)",
       "Bash(python test_server.py:*)",
       "Bash(python test_exe_quick.py:*)",
-      "Bash(tee:*)"
+      "Bash(tee:*)",
+      "Bash(python profile_performance.py:*)",
+      "Bash(PROFILE_PERFORMANCE=1 echo:*)",
+      "Bash(./dist/openkeyscan-analyzer/openkeyscan-analyzer.exe:*)",
+      "Bash(pipenv run python:*)",
+      "Bash(PROFILE_PERFORMANCE=1 pipenv run python:*)",
+      "Bash(PROFILE_PERFORMANCE=1 python:*)",
+      "Bash(python:*)",
+      "WebSearch",
+      "Bash(find:*)",
+      "WebFetch(domain:github.com)",
+      "Bash(cat:*)"
     ],
     "deny": [],
     "ask": []

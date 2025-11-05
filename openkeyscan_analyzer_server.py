@@ -16,14 +16,62 @@ Supported audio formats: MP3, MP4, WAV, FLAC, OGG, M4A, AAC, AIFF, AU
 """
 
 import sys
+import os
 import json
-import torch
-import librosa
-import numpy as np
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
 import threading
 import time
+
+# Configure OpenBLAS/MKL threading BEFORE importing numpy-dependent libraries
+# This is critical for PyInstaller bundles where environment isn't inherited
+import multiprocessing
+NUM_CORES = multiprocessing.cpu_count()
+os.environ.setdefault('OMP_NUM_THREADS', str(NUM_CORES))
+os.environ.setdefault('OPENBLAS_NUM_THREADS', str(NUM_CORES))
+os.environ.setdefault('MKL_NUM_THREADS', str(NUM_CORES))
+os.environ.setdefault('NUMEXPR_NUM_THREADS', str(NUM_CORES))
+
+# Log threading configuration if profiling is enabled
+if os.environ.get('PROFILE_PERFORMANCE', '0') == '1':
+    print(f"[THREADING] CPU cores: {NUM_CORES}", file=sys.stderr)
+    print(f"[THREADING] OMP_NUM_THREADS: {os.environ.get('OMP_NUM_THREADS')}", file=sys.stderr)
+    print(f"[THREADING] OPENBLAS_NUM_THREADS: {os.environ.get('OPENBLAS_NUM_THREADS')}", file=sys.stderr)
+
+# Configure FFmpeg path for audioread BEFORE importing librosa
+# This fixes the 25x slowdown in MP3 loading when bundled with PyInstaller
+def setup_ffmpeg_path():
+    """
+    Add bundled ffmpeg to PATH so audioread can find it.
+
+    audioread (used by librosa for MP3/M4A/AAC) searches for 'ffmpeg' command in PATH.
+    In PyInstaller bundles, we need to explicitly add the bundle directory to PATH.
+    """
+    try:
+        # Get base path (PyInstaller bundle or development directory)
+        base_path = Path(sys._MEIPASS)
+    except AttributeError:
+        base_path = Path(__file__).parent
+
+    # Add base path to PATH if not already present
+    base_path_str = str(base_path)
+    if base_path_str not in os.environ['PATH']:
+        os.environ['PATH'] = base_path_str + os.pathsep + os.environ['PATH']
+        if os.environ.get('PROFILE_PERFORMANCE', '0') == '1':
+            print(f"[FFMPEG] Added to PATH: {base_path_str}", file=sys.stderr)
+
+            # Check if ffmpeg is now findable
+            ffmpeg_name = 'ffmpeg.exe' if sys.platform == 'win32' else 'ffmpeg'
+            ffmpeg_path = base_path / ffmpeg_name
+            if ffmpeg_path.exists():
+                print(f"[FFMPEG] Found bundled ffmpeg: {ffmpeg_path}", file=sys.stderr)
+
+setup_ffmpeg_path()
+
+# NOW import numpy-dependent libraries (after threading and ffmpeg are configured)
+import torch
+import librosa
+import numpy as np
 
 # Import from existing modules
 from dataset import CAMELOT_MAPPING
@@ -57,11 +105,24 @@ def preprocess_audio(audio_path, sample_rate=44100, n_bins=105, hop_length=8820)
     Returns:
         torch.Tensor: Shape (1, freq_bins, time_frames), ready for model input.
     """
+    profile = os.environ.get('PROFILE_PERFORMANCE', '0') == '1'
+
     # Use librosa to load and resample audio (supports multiple formats via soundfile/audioread)
+    if profile:
+        t0 = time.time()
     waveform, sr = librosa.load(audio_path, sr=sample_rate, mono=True)
     waveform = waveform.astype(np.float32)
+    if profile:
+        print(f"    - librosa.load: {time.time() - t0:.3f}s", file=sys.stderr)
 
+    if profile:
+        t0 = time.time()
     cqt = librosa.cqt(waveform, sr=sample_rate, hop_length=hop_length, n_bins=n_bins, bins_per_octave=24, fmin=65)
+    if profile:
+        print(f"    - librosa.cqt: {time.time() - t0:.3f}s", file=sys.stderr)
+
+    if profile:
+        t0 = time.time()
     spec = np.abs(cqt)
     spec = np.log1p(spec)
 
@@ -70,6 +131,9 @@ def preprocess_audio(audio_path, sample_rate=44100, n_bins=105, hop_length=8820)
     spec_tensor = torch.tensor(chunk, dtype=torch.float32)
     if spec_tensor.ndim == 2:
         spec_tensor = spec_tensor.unsqueeze(0)  # Shape: (1, freq, time)
+    if profile:
+        print(f"    - postprocess: {time.time() - t0:.3f}s", file=sys.stderr)
+
     return spec_tensor
 
 
@@ -243,6 +307,11 @@ class KeyDetectionServer:
         request_id = request.get('id', 'unknown')
         file_path = request.get('path', '')
 
+        # Enable profiling via environment variable
+        profile = os.environ.get('PROFILE_PERFORMANCE', '0') == '1'
+        timings = {}
+        request_start = time.time()
+
         try:
             audio_path = Path(file_path)
 
@@ -264,19 +333,46 @@ class KeyDetectionServer:
                 }
 
             # Preprocess audio
+            if profile:
+                t0 = time.time()
             spec_tensor = preprocess_audio(audio_path)
+            if profile:
+                timings['preprocess_audio'] = time.time() - t0
+
+            if profile:
+                t0 = time.time()
             spec_tensor = spec_tensor.to(self.device)
             spec_tensor = spec_tensor.unsqueeze(0)  # Add batch dimension
+            if profile:
+                timings['to_device'] = time.time() - t0
 
             # Get thread-local model instance and run inference
+            if profile:
+                t0 = time.time()
             model = self.get_model()
             with torch.no_grad():
                 outputs = model(spec_tensor)
                 pred = int(torch.argmax(outputs, dim=1).cpu().item())
+            if profile:
+                timings['model_inference'] = time.time() - t0
 
             # Format output
+            if profile:
+                t0 = time.time()
             camelot_str, key_text = camelot_output(pred)
             openkey_str = camelot_to_openkey(camelot_str)
+            if profile:
+                timings['format_output'] = time.time() - t0
+
+            if profile:
+                total_time = time.time() - request_start
+                timings['total'] = total_time
+                print(f"[PROFILE] {audio_path.name}:", file=sys.stderr)
+                print(f"  preprocess_audio: {timings['preprocess_audio']:.3f}s ({timings['preprocess_audio']/total_time*100:.1f}%)", file=sys.stderr)
+                print(f"  to_device: {timings['to_device']:.3f}s ({timings['to_device']/total_time*100:.1f}%)", file=sys.stderr)
+                print(f"  model_inference: {timings['model_inference']:.3f}s ({timings['model_inference']/total_time*100:.1f}%)", file=sys.stderr)
+                print(f"  format_output: {timings['format_output']:.3f}s ({timings['format_output']/total_time*100:.1f}%)", file=sys.stderr)
+                print(f"  TOTAL: {total_time:.3f}s", file=sys.stderr)
 
             return {
                 'id': request_id,
