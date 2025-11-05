@@ -30,22 +30,30 @@ try:
     PSUTIL_AVAILABLE = True
 except ImportError:
     PSUTIL_AVAILABLE = False
+
+# Try to import resource module (Unix only)
+try:
     import resource
+    RESOURCE_AVAILABLE = True
+except ImportError:
+    RESOURCE_AVAILABLE = False
 
 
 class ServerTester:
     """Test harness for the key detection server."""
 
-    def __init__(self, server_script='openkeyscan_analyzer_server.py', workers=1):
+    def __init__(self, server_script='openkeyscan_analyzer_server.py', workers=1, use_executable=False):
         """
         Initialize the tester.
 
         Args:
-            server_script (str): Path to the server script
+            server_script (str): Path to the server script or executable
             workers (int): Number of worker threads for the server
+            use_executable (bool): If True, run as executable; if False, run as Python script
         """
         self.server_script = server_script
         self.workers = workers
+        self.use_executable = use_executable
         self.process = None
         self.results = {}
         self.results_lock = threading.Lock()
@@ -54,14 +62,27 @@ class ServerTester:
 
     def start_server(self):
         """Start the server process."""
-        print(f"Starting key detection server with {self.workers} worker(s)...")
+        mode = "executable" if self.use_executable else "Python script"
+        print(f"Starting key detection server ({mode}) with {self.workers} worker(s)...")
         sys.stdout.flush()
 
-        # Use venv python if available, otherwise system python
-        python_cmd = './venv/bin/python3' if os.path.exists('./venv/bin/python3') else 'python3'
+        if self.use_executable:
+            # Run the executable directly
+            cmd = [self.server_script, '-w', str(self.workers)]
+        else:
+            # Use venv python if available, otherwise system python
+            # On Windows use 'python', on Unix use 'python3'
+            import platform
+            if os.path.exists('./venv/bin/python3'):
+                python_cmd = './venv/bin/python3'
+            elif os.path.exists('./venv/Scripts/python.exe'):
+                python_cmd = './venv/Scripts/python.exe'
+            else:
+                python_cmd = 'python' if platform.system() == 'Windows' else 'python3'
+            cmd = [python_cmd, self.server_script, '-w', str(self.workers)]
 
         self.process = subprocess.Popen(
-            [python_cmd, self.server_script, '-w', str(self.workers)],
+            cmd,
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -79,8 +100,12 @@ class ServerTester:
 
     def _read_responses(self):
         """Read and parse responses from server stdout."""
+        print("[DEBUG] _read_responses thread started")
+        sys.stdout.flush()
         try:
             for line in self.process.stdout:
+                print(f"[DEBUG] Got stdout line: {line[:100]}")
+                sys.stdout.flush()
                 line = line.strip()
                 if not line:
                     continue
@@ -110,9 +135,12 @@ class ServerTester:
 
     def _read_stderr(self):
         """Read and display stderr from server."""
+        print("[DEBUG] _read_stderr thread started")
+        sys.stdout.flush()
         try:
             for line in self.process.stderr:
                 print(f"[SERVER] {line.rstrip()}")
+                sys.stdout.flush()
         except Exception as e:
             print(f"Error reading stderr: {e}")
 
@@ -189,8 +217,8 @@ class ServerTester:
             # Track peak
             if memory_info['total_rss_mb'] > self.peak_memory:
                 self.peak_memory = memory_info['total_rss_mb']
-        else:
-            # Fallback to resource module (less accurate)
+        elif RESOURCE_AVAILABLE:
+            # Fallback to resource module (less accurate, Unix only)
             try:
                 usage = resource.getrusage(resource.RUSAGE_SELF)
                 memory_info['client_rss_mb'] = usage.ru_maxrss / 1024  # macOS reports in bytes
@@ -257,6 +285,10 @@ def main():
                         help="Directory to search for MP3 files (default: ~/Music/spotify)")
     parser.add_argument('-w', '--workers', type=int, default=1,
                         help="Number of worker threads for the server (default: 1)")
+    parser.add_argument('--exe', action='store_true',
+                        help="Use the built executable instead of Python script")
+    parser.add_argument('--exe-path', type=str, default='dist/openkeyscan-analyzer/openkeyscan-analyzer.exe',
+                        help="Path to the executable (default: dist/openkeyscan-analyzer/openkeyscan-analyzer.exe)")
     args = parser.parse_args()
 
     # Print memory tracking availability
@@ -265,7 +297,19 @@ def main():
         print("Install with: pip install psutil")
         print()
 
-    tester = ServerTester(workers=args.workers)
+    # Determine server path based on --exe flag
+    if args.exe:
+        server_path = os.path.abspath(args.exe_path)  # Use absolute path for Windows
+        use_executable = True
+        if not os.path.exists(server_path):
+            print(f"Error: Executable not found at {server_path}")
+            print("Please build the executable first with: pyinstaller openkeyscan_analyzer.spec")
+            return
+    else:
+        server_path = 'openkeyscan_analyzer_server.py'
+        use_executable = False
+
+    tester = ServerTester(server_script=server_path, workers=args.workers, use_executable=use_executable)
 
     try:
         # Start server

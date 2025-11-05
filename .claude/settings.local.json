@@ -2,7 +2,10 @@
   "permissions": {
     "allow": [
       "Bash(./build.bat)",
-      "Bash(pipenv install:*)"
+      "Bash(pipenv install:*)",
+      "Bash(python test_server.py:*)",
+      "Bash(python test_exe_quick.py:*)",
+      "Bash(tee:*)"
     ],
     "deny": [],
     "ask": []

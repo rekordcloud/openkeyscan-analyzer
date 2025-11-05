@@ -240,7 +240,17 @@ The following symlinks are automatically replaced with actual files:
 - **Distribution**: Executable is fully self-contained
 - **Tested On**: macOS 15.6.1 (Sequoia), ARM64 architecture
 
-### Linux/Windows
+### Windows
+- **Audio Backend**: Uses audioread for compressed formats
+- **Native Formats**: WAV, FLAC, OGG work natively via PySoundFile
+- **Compressed Formats**: MP3, MP4, M4A, AAC, AIFF, AU work via audioread backends
+- **FFmpeg**: Required for MP3/MP4/M4A/AAC support (must be in PATH or bundled)
+- **Distribution**: PyInstaller builds tested and working on Windows
+- **Tested On**: Windows 10 (Build 26100), MSYS2/Git Bash environment
+- **Performance Note**: ~20+ seconds per file (significantly slower than macOS due to Windows overhead and CPU differences)
+- **Build Output**: `.exe` executable (works without Python installation)
+
+### Linux
 - **Audio Backend**: Would require FFmpeg for compressed format decoding
 - **Native Formats**: WAV, FLAC, OGG work natively via PySoundFile
 - **Compressed Formats**: MP3, M4A, AAC require FFmpeg or GStreamer
@@ -255,7 +265,9 @@ The following symlinks are automatically replaced with actual files:
 MusicalKeyCNN-main/
 ├── openkeyscan_analyzer.py          # Main CLI entry point
 ├── openkeyscan_analyzer_server.py   # Server mode (stdin/stdout JSON protocol)
-├── test_server.py           # Server test harness
+├── test_server.py           # Server test harness (full test with file discovery)
+├── test_exe_quick.py        # Quick executable test with specific files
+├── test_exe_simple.py       # Simple executable stdout/stderr test
 ├── model.py                 # CNN architecture
 ├── dataset.py               # Dataset and Camelot mapping
 ├── eval.py                  # Evaluation utilities
@@ -271,7 +283,7 @@ MusicalKeyCNN-main/
 │   └── keynet.pt           # Trained model weights (1.8MB)
 └── dist/                   # Build output (gitignored)
     └── openkeyscan-analyzer/       # Standalone executable distribution
-        └── openkeyscan-analyzer    # Server executable
+        └── openkeyscan-analyzer.exe    # Server executable (Windows)
 ```
 
 ---
@@ -307,8 +319,11 @@ python openkeyscan_analyzer.py -f song.mp3 --device cpu
 # Build
 pyinstaller openkeyscan_analyzer.spec
 
-# Test
-./dist/openkeyscan-analyzer/openkeyscan-analyzer
+# Test the built executable (quick test with 3 specific files)
+python test_exe_quick.py
+
+# Test with the full test harness (requires Python dependencies)
+python test_server.py --exe
 
 # Package for distribution
 cd dist
@@ -321,8 +336,11 @@ zip -r openkeyscan-analyzer.zip openkeyscan-analyzer/
 # Start server in development
 python openkeyscan_analyzer_server.py
 
-# Test server with 10 random files
+# Test server with Python script (requires dependencies installed)
 python test_server.py
+
+# Test the built executable with specific files (Windows-friendly)
+python test_exe_quick.py
 ```
 
 ---
@@ -474,6 +492,59 @@ Processed 10 files in 4.37s
 Success: 10, Failed: 0
 Average: 0.44s per file
 ```
+
+### Testing Built Executables
+
+**Quick Test (Recommended for Windows):**
+```sh
+# Tests the executable with 3 specific MP3 files
+# Faster and more reliable than recursive file search on Windows
+python test_exe_quick.py
+```
+
+**Expected Output:**
+```
+Starting executable: C:\...\dist\openkeyscan-analyzer\openkeyscan-analyzer.exe
+Waiting for server to be ready...
+[OK] Server ready!
+
+Sending 3 requests...
+Waiting for results (may take 10-15s per file on Windows)...
+
+======================================================================
+RESULTS:
+======================================================================
+[OK] Athys & Duster - Barfight.mp3
+  Camelot: 4A | Open Key: 9m | Key: F minor
+
+[OK] Audio - Combust.mp3
+  Camelot: 4A | Open Key: 9m | Key: F minor
+
+[OK] Balthazar & JackRock - Andromeda.mp3
+  Camelot: 11A | Open Key: 4m | Key: F# minor/Gb minor
+======================================================================
+
+Processed 3/3 files in 63.21s
+Average: 21.07s per file
+
+Done!
+```
+
+**Full Test Harness (with executable):**
+```sh
+# Tests executable with random MP3 files from a directory
+# Note: File discovery can be slow on Windows with large directories
+python test_server.py --exe -d ~/Music -n 5
+```
+
+**Performance Notes:**
+- **macOS**: ~0.44s per file (as documented in original tests)
+- **Windows**: ~20-21s per file (significantly slower, tested on Windows 10/MSYS2)
+- Windows slowdown likely due to:
+  - MSYS2/Git Bash overhead
+  - Windows file I/O performance
+  - CPU differences
+  - librosa/numpy single-threaded performance on Windows
 
 ### Command-Line Options
 
@@ -681,7 +752,7 @@ Ensure these are gitignored:
 
 ## Changelog
 
-### Recent Modifications (2025-11-04)
+### Recent Modifications (2025-11-04 to 2025-11-05)
 1. ✅ Changed audio loading from torchaudio to librosa (FFmpeg independence)
 2. ✅ Added resource path resolution for PyInstaller bundling
 3. ✅ Created PyInstaller spec file with model bundling
@@ -711,17 +782,28 @@ Ensure these are gitignored:
 27. ✅ Updated both CLI and server modes to accept all supported formats
 28. ✅ Added `SUPPORTED_FORMATS` constant for centralized format management
 29. ✅ **Added MP4 support** (2025-11-04) - expanded from 8 to 9 supported formats, MP4 works via audioread/Core Audio on macOS
+30. ✅ **Windows executable testing** (2025-11-05) - verified build works on Windows 10/MSYS2
+31. ✅ **Created test_exe_quick.py** - fast test script with specific files (Windows-friendly)
+32. ✅ **Created test_exe_simple.py** - minimal stdout/stderr test script
+33. ✅ **Updated test_server.py** - added --exe flag to test built executables
+34. ✅ **Documented Windows performance** - ~20-21s per file (vs 0.44s on macOS)
+35. ✅ **Fixed Windows compatibility issues** - absolute paths, Python vs python3, encoding
 
 ### Known Working Configuration
+
+**Dependencies:**
 - Python: 3.13.2
 - torch: 2.9.0
 - torchaudio: 2.9.0
 - librosa: 0.11.0
 - numpy: 2.3.4
 - PyInstaller: 6.16.0
-- Platform: macOS 15.6.1 (Darwin 24.6.0), ARM64
 - Supported Audio Formats: MP3, MP4, WAV, FLAC, OGG, M4A, AAC, AIFF, AU (9 total)
+
+**Tested Platforms:**
+- **macOS**: 15.6.1 (Sequoia), ARM64 - Performance: ~0.44s per file
+- **Windows**: 10 (Build 26100), MSYS2/Git Bash - Performance: ~20-21s per file
 
 ---
 
-*Last Updated: 2025-11-04*
+*Last Updated: 2025-11-05*
