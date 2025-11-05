@@ -111,13 +111,13 @@ def dereference_symlinks(dist_path):
             # Copy the actual file/directory
             if target.is_dir():
                 shutil.copytree(target, symlink_path)
-                print(f"  ✓ Copied directory: {symlink_path.name}")
+                print(f"  [+] Copied directory: {symlink_path.name}")
             else:
                 shutil.copy2(target, symlink_path)
-                print(f"  ✓ Copied file: {symlink_path.name}")
+                print(f"  [+] Copied file: {symlink_path.name}")
 
         except Exception as e:
-            print(f"  ✗ Error: {symlink_path.name}: {e}")
+            print(f"  [-] Error: {symlink_path.name}: {e}")
 
     print(f"Successfully dereferenced {len(symlinks_found)} symlinks")
     print("="*70 + "\n")
@@ -155,11 +155,11 @@ def create_zip_archive(dist_path, output_name):
     zip_size = zip_path.stat().st_size
     compression_ratio = (1 - zip_size / total_size) * 100 if total_size > 0 else 0
 
-    print(f"  ✓ Added {file_count} files")
-    print(f"  ✓ Original size: {total_size / 1024 / 1024:.1f} MB")
-    print(f"  ✓ Compressed size: {zip_size / 1024 / 1024:.1f} MB")
-    print(f"  ✓ Compression ratio: {compression_ratio:.1f}%")
-    print(f"  ✓ Archive saved: {zip_path}")
+    print(f"  [+] Added {file_count} files")
+    print(f"  [+] Original size: {total_size / 1024 / 1024:.1f} MB")
+    print(f"  [+] Compressed size: {zip_size / 1024 / 1024:.1f} MB")
+    print(f"  [+] Compression ratio: {compression_ratio:.1f}%")
+    print(f"  [+] Archive saved: {zip_path}")
     print("="*70 + "\n")
 
 # Run the dereferencing

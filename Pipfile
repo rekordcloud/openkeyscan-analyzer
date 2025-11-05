@@ -13,6 +13,7 @@ tqdm = "*"
 [dev-packages]
 pyinstaller = "*"
 psutil = "*"
+pywin32-ctypes = "*"
 
 [requires]
 python_version = "3.13"

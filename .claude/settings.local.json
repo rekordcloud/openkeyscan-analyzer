@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./build.bat)",
+      "Bash(pipenv install:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
