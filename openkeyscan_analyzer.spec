@@ -163,6 +163,118 @@ def dereference_symlinks(dist_path):
     print(f"Successfully dereferenced {len(symlinks_found)} symlinks")
     print("="*70 + "\n")
 
+def codesign_macos(dist_path):
+    """Sign all executables and libraries with Apple Developer ID."""
+    print("\n" + "="*70)
+    print("Post-build: Code signing for macOS")
+    print("="*70)
+
+    # Only run on macOS
+    if sys.platform != 'darwin':
+        print("Skipping (not macOS)")
+        return
+
+    import subprocess
+
+    # Developer ID certificate identity
+    CODESIGN_IDENTITY = "Developer ID Application: Rekordcloud B.V. (2B7KR8BSYR)"
+
+    print(f"Code signing identity: {CODESIGN_IDENTITY}")
+    print(f"Target directory: {dist_path}")
+    print("")
+
+    # Find all files that should be signed (executables, .dylib, .so)
+    files_to_sign = []
+
+    for root, dirs, files in os.walk(dist_path):
+        root_path = Path(root)
+        for file in files:
+            file_path = root_path / file
+
+            # Sign executables, dynamic libraries, and Python extensions
+            if (file_path.is_file() and
+                (file_path.suffix in ['.dylib', '.so'] or
+                 os.access(file_path, os.X_OK))):
+                files_to_sign.append(file_path)
+
+    if not files_to_sign:
+        print("No files to sign found")
+        return
+
+    print(f"Found {len(files_to_sign)} files to sign")
+    print("")
+
+    # Sign each file
+    signed_count = 0
+    skipped_count = 0
+    failed_count = 0
+
+    for file_path in sorted(files_to_sign):
+        relative_path = file_path.relative_to(dist_path)
+
+        try:
+            # Sign with hardened runtime and timestamp
+            result = subprocess.run(
+                [
+                    'codesign',
+                    '--sign', CODESIGN_IDENTITY,
+                    '--force',
+                    '--timestamp',
+                    '--options', 'runtime',
+                    '--deep',
+                    str(file_path)
+                ],
+                capture_output=True,
+                text=True,
+                timeout=30
+            )
+
+            if result.returncode == 0:
+                print(f"  [✓] Signed: {relative_path}")
+                signed_count += 1
+            else:
+                # Some files may already be signed or not signable - skip silently
+                if 'is already signed' in result.stderr or 'code object is not signed at all' in result.stderr:
+                    skipped_count += 1
+                else:
+                    print(f"  [⚠] Skipped: {relative_path}")
+                    print(f"      {result.stderr.strip()}")
+                    skipped_count += 1
+
+        except subprocess.TimeoutExpired:
+            print(f"  [✗] Timeout: {relative_path}")
+            failed_count += 1
+        except Exception as e:
+            print(f"  [✗] Error: {relative_path}: {e}")
+            failed_count += 1
+
+    print("")
+    print(f"Signing complete:")
+    print(f"  Signed: {signed_count}")
+    print(f"  Skipped: {skipped_count}")
+    print(f"  Failed: {failed_count}")
+
+    # Verify the main executable signature
+    main_exe = dist_path / 'openkeyscan-analyzer'
+    if main_exe.exists():
+        print("")
+        print("Verifying main executable signature...")
+        try:
+            result = subprocess.run(
+                ['codesign', '--verify', '--verbose', str(main_exe)],
+                capture_output=True,
+                text=True,
+                timeout=10
+            )
+            if result.returncode == 0:
+                print(f"  [✓] Signature verified: {main_exe.name}")
+            else:
+                print(f"  [⚠] Verification failed: {result.stderr.strip()}")
+        except Exception as e:
+            print(f"  [✗] Verification error: {e}")
+
+    print("="*70 + "\n")
+
 def create_zip_archive(dist_path, output_name):
     """Create a zip archive of the distribution folder."""
     print("\n" + "="*70)
@@ -203,8 +315,9 @@ def create_zip_archive(dist_path, output_name):
     print(f"  [+] Archive saved: {zip_path}")
     print("="*70 + "\n")
 
-# Run the dereferencing
+# Run the post-build steps
 dist_folder = Path(DISTPATH) / 'openkeyscan-analyzer'
 if dist_folder.exists():
     dereference_symlinks(dist_folder)
+    codesign_macos(dist_folder)
     create_zip_archive(dist_folder, 'openkeyscan-analyzer')
