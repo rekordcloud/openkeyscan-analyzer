@@ -45,8 +45,8 @@ def read_stdout():
     try:
         for line in process.stdout:
             line = line.strip()
-            #print(f"[DEBUG stdout] {line[:200]}")
-            #sys.stdout.flush()
+            print(f"[DEBUG stdout] {line[:200]}")
+            sys.stdout.flush()
             if not line:
                 continue
             try:
@@ -104,15 +104,15 @@ for f in test_files:
     requests[req_id] = f
     request = {'id': req_id, 'path': f}
     req_json = json.dumps(request)
-    # Uncomment for debug: print(f"[DEBUG] Sending: {req_json[:100]}...")
-    # sys.stdout.flush()
+    print(f"[DEBUG] Sending: {req_json[:150]}...")
+    sys.stdout.flush()
     send_times[req_id] = time.time()  # Track when we sent each request
     process.stdin.write(req_json + '\n')
     process.stdin.flush()
 
 # Wait for results
-print("Waiting for results (may take 10-15s per file on Windows)...")
-timeout = time.time() + 60  # Increased timeout for Windows
+print("Waiting for results (may take 60s per file on Windows)...")
+timeout = time.time() + 300  # Increased timeout for Windows (60s per file × 3 files + buffer)
 while len(results) < len(requests) and time.time() < timeout:
     time.sleep(0.1)
 
