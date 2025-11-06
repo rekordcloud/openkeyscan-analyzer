@@ -9,14 +9,23 @@ import uuid
 import time
 import threading
 
-exe_path = os.path.abspath("dist/openkeyscan-analyzer/openkeyscan-analyzer.exe")
-
-# Test files
-test_files = [
-    r"C:\Users\Chris\Music\Athys & Duster - Barfight.mp3",
-    r"C:\Users\Chris\Music\Audio - Combust.mp3",
-    r"C:\Users\Chris\Music\Balthazar & JackRock - Andromeda.mp3"
-]
+# Determine executable path based on platform
+if sys.platform == "win32":
+    exe_path = os.path.abspath("dist/openkeyscan-analyzer/openkeyscan-analyzer.exe")
+    # Test files for Windows
+    test_files = [
+        r"C:\Users\Chris\Music\Athys & Duster - Barfight.mp3",
+        r"C:\Users\Chris\Music\Audio - Combust.mp3",
+        r"C:\Users\Chris\Music\Balthazar & JackRock - Andromeda.mp3"
+    ]
+else:
+    exe_path = os.path.abspath("dist/openkeyscan-analyzer/openkeyscan-analyzer")
+    # Test files for macOS
+    test_files = [
+        os.path.expanduser("~/Music/spotify/Athys & Duster - Barfight.mp3"),
+        os.path.expanduser("~/Music/spotify/Audio - Combust.mp3"),
+        os.path.expanduser("~/Music/spotify/Balthazar & JackRock - Andromeda.mp3")
+    ]
 
 print(f"Starting executable: {exe_path}")
 process = subprocess.Popen(

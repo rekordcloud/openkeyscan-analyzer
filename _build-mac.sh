@@ -19,6 +19,9 @@ if [ "$TARGET_ARCH" != "arm64" ] && [ "$TARGET_ARCH" != "x64" ]; then
     exit 1
 fi
 
+# Save original architecture for directory naming (arm64 or x64)
+ARCH_DIR="$TARGET_ARCH"
+
 # Convert x64 to x86_64 for PyInstaller
 if [ "$TARGET_ARCH" = "x64" ]; then
     PYINSTALLER_ARCH="x86_64"
@@ -112,9 +115,6 @@ echo "Output:"
 echo "  Executable: dist/openkeyscan-analyzer/openkeyscan-analyzer"
 echo "  Archive:    dist/openkeyscan-analyzer.zip"
 echo ""
-
-# Use the target architecture for directory naming
-ARCH_DIR="$TARGET_ARCH"
 
 # Move zip file to distribution directory
 DIST_DIR="$HOME/workspace/openkeyscan/openkeyscan-app/build/lib/mac/$ARCH_DIR"
