@@ -24,7 +24,18 @@
       "Bash(chmod:*)",
       "Bash(./build-mac-x64.sh:*)",
       "Bash(pipenv --version:*)",
-      "WebFetch(domain:pypi.org)"
+      "WebFetch(domain:pypi.org)",
+      "Bash(py -3.12 test_server.py:*)",
+      "Bash(py -3.12 test_exe_quick.py:*)",
+      "Bash(PROFILE_PERFORMANCE=1 ./openkeyscan-analyzer.exe:*)",
+      "Bash(py -3.12:*)",
+      "Bash(bash test_wav_simple.sh:*)",
+      "Bash(timeout 60 python:*)",
+      "Bash(timeout 15 python:*)",
+      "Bash(timeout 30 python:*)",
+      "Bash(timeout 45 python:*)",
+      "Bash(timeout 180 python:*)",
+      "Bash(timeout 120 python:*)"
     ],
     "deny": [],
     "ask": []

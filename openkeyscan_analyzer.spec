@@ -35,17 +35,43 @@ hiddenimports = [
     'numba',
     'soundfile',
     'cffi',
+    'av',  # PyAV for optimized audio loading
+    # Comprehensive scipy imports to prevent lazy loading issues
+    'scipy._lib',
+    'scipy._lib.messagestream',
+    'scipy.special',
+    'scipy.special._cdflib',
+    'scipy.special._ufuncs',
+    'scipy.special._ufuncs_cxx',
+    'scipy.stats',
+    'scipy.stats._distn_infrastructure',
+    'scipy.stats.distributions',
+    'scipy.stats._continuous_distns',
+    'scipy.stats._discrete_distns',
+    'scipy.stats._stats_py',
+    'scipy.stats._stats',
+    'scipy.signal',
+    'scipy.signal.windows',
+    'scipy.signal._peak_finding',
+    'scipy.fft',
+    'scipy.fftpack',
+    'scipy.linalg',
+    'scipy.linalg.blas',
+    'scipy.linalg.lapack',
 ]
 
+# Runtime hooks to fix scipy initialization
+runtime_hooks = ['runtime_hook_scipy.py']
+
 a = Analysis(
-    ['openkeyscan_analyzer_server.py'],
+    ['openkeyscan_analyzer_server_optimized.py'],
     pathex=[str(base_path)],
     binaries=[],
     datas=datas,
     hiddenimports=hiddenimports,
     hookspath=[],
     hooksconfig={},
-    runtime_hooks=[],
+    runtime_hooks=runtime_hooks,
     excludes=[],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
