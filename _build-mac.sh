@@ -5,8 +5,30 @@
 
 set -e  # Exit on error
 
+# Parse architecture argument
+if [ -z "$1" ]; then
+    echo "Error: Architecture argument required (arm64 or x64)"
+    echo "Usage: $0 <arm64|x64>"
+    exit 1
+fi
+
+TARGET_ARCH="$1"
+if [ "$TARGET_ARCH" != "arm64" ] && [ "$TARGET_ARCH" != "x64" ]; then
+    echo "Error: Invalid architecture '$TARGET_ARCH'"
+    echo "Must be 'arm64' or 'x64'"
+    exit 1
+fi
+
+# Convert x64 to x86_64 for PyInstaller
+if [ "$TARGET_ARCH" = "x64" ]; then
+    PYINSTALLER_ARCH="x86_64"
+else
+    PYINSTALLER_ARCH="arm64"
+fi
+
 echo "======================================================================"
 echo "Building Musical Key CNN Standalone Application"
+echo "Architecture: $TARGET_ARCH"
 echo "======================================================================"
 echo ""
 
@@ -17,10 +39,20 @@ if ! command -v pipenv &> /dev/null; then
     exit 1
 fi
 
+# Update code from git
+echo "Pulling latest code from git..."
+git pull
+echo ""
+
+# Install/update dependencies
+echo "Installing/updating dependencies..."
+pipenv install --dev
+echo ""
+
 # Check if pyinstaller is available in pipenv environment
 if ! pipenv run which pyinstaller &> /dev/null; then
     echo "Error: pyinstaller not found in pipenv environment"
-    echo "Install it with: pipenv install --dev"
+    echo "This should not happen after pipenv install --dev"
     exit 1
 fi
 
@@ -34,7 +66,7 @@ echo "Starting PyInstaller build..."
 echo ""
 
 # Run PyInstaller with --noconfirm to skip prompts (via pipenv)
-pipenv run pyinstaller --noconfirm openkeyscan_analyzer.spec
+pipenv run pyinstaller --noconfirm --target-arch $PYINSTALLER_ARCH openkeyscan_analyzer.spec
 
 echo ""
 echo "======================================================================"
@@ -46,16 +78,8 @@ echo "  Executable: dist/openkeyscan-analyzer/openkeyscan-analyzer"
 echo "  Archive:    dist/openkeyscan-analyzer.zip"
 echo ""
 
-# Detect architecture (using Node.js naming convention)
-ARCH=$(uname -m)
-if [ "$ARCH" = "arm64" ]; then
-    ARCH_DIR="arm64"
-elif [ "$ARCH" = "x86_64" ]; then
-    ARCH_DIR="x64"
-else
-    echo "Warning: Unknown architecture '$ARCH', using as-is"
-    ARCH_DIR="$ARCH"
-fi
+# Use the target architecture for directory naming
+ARCH_DIR="$TARGET_ARCH"
 
 # Move zip file to distribution directory
 DIST_DIR="$HOME/workspace/openkeyscan/build/lib/mac/$ARCH_DIR"
