@@ -1,9 +1,14 @@
 # -*- mode: python ; coding: utf-8 -*-
 
 import sys
+import os
 from pathlib import Path
 
 block_cipher = None
+
+# Read target architecture from environment variable (set by build script)
+# This ensures PyInstaller validates that the terminal arch matches the target
+target_arch = os.environ.get('TARGET_ARCH', None)  # 'arm64', 'x86_64', or None (auto-detect)
 
 # Determine the base path
 base_path = Path.cwd()
@@ -63,7 +68,7 @@ exe_server = EXE(
     console=True,
     disable_windowed_traceback=False,
     argv_emulation=False,
-    target_arch=None,
+    target_arch=target_arch,  # Set from environment variable (arm64, x86_64, or None)
     codesign_identity=None,
     entitlements_file=None,
 )

@@ -65,8 +65,12 @@ fi
 echo "Starting PyInstaller build..."
 echo ""
 
+# Export target architecture for spec file to read
+# PyInstaller will validate that current terminal arch matches this target
+export TARGET_ARCH="$PYINSTALLER_ARCH"
+
 # Run PyInstaller with --noconfirm to skip prompts (via pipenv)
-pipenv run pyinstaller --noconfirm --target-arch $PYINSTALLER_ARCH openkeyscan_analyzer.spec
+pipenv run pyinstaller --noconfirm openkeyscan_analyzer.spec
 
 echo ""
 echo "======================================================================"
@@ -82,7 +86,7 @@ echo ""
 ARCH_DIR="$TARGET_ARCH"
 
 # Move zip file to distribution directory
-DIST_DIR="$HOME/workspace/openkeyscan/build/lib/mac/$ARCH_DIR"
+DIST_DIR="$HOME/workspace/openkeyscan/openkeyscan-app/build/lib/mac/$ARCH_DIR"
 ZIP_FILE="dist/openkeyscan-analyzer.zip"
 
 echo "Installing to distribution directory..."
