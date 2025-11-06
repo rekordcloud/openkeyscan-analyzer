@@ -307,11 +307,53 @@ def codesign_macos(dist_path):
 
     print("")
 
-    # PHASE 4: Sign the main executable
-    print("Phase 4: Signing main executable...")
+    # PHASE 4: Sign standalone executables (like _internal/Python)
+    print("Phase 4: Signing standalone executables...")
+    standalone_executables = []
+
+    for root, dirs, files in os.walk(dist_path):
+        root_path = Path(root)
+        for file in files:
+            file_path = root_path / file
+
+            # Skip if already signed as framework content
+            if any(str(file_path).startswith(str(fw)) for fw in python_frameworks):
+                continue
+
+            # Skip if it's a library (already handled in phase 3)
+            if file_path.suffix in ['.dylib', '.so']:
+                continue
+
+            # Skip the main executable (handled in phase 5)
+            if file_path == dist_path / 'openkeyscan-analyzer':
+                continue
+
+            # Find executable files (no extension, executable bit set)
+            if file_path.is_file() and os.access(file_path, os.X_OK):
+                # Additional check: must be a Mach-O binary
+                try:
+                    with open(file_path, 'rb') as f:
+                        magic = f.read(4)
+                        # Mach-O magic numbers: 0xfeedface (32-bit), 0xfeedfacf (64-bit),
+                        # 0xcafebabe (universal), 0xcffaedfe (reverse byte order)
+                        if magic in [b'\xfe\xed\xfa\xce', b'\xfe\xed\xfa\xcf',
+                                   b'\xca\xfe\xba\xbe', b'\xcf\xfa\xed\xfe']:
+                            standalone_executables.append(file_path)
+                except:
+                    pass
+
+    for file_path in sorted(standalone_executables):
+        sign_file(file_path)
+
+    print("")
+
+    # PHASE 5: Sign the main executable (with entitlements for NumPy/PyTorch)
+    print("Phase 5: Signing main executable with entitlements...")
     main_exe = dist_path / 'openkeyscan-analyzer'
+    entitlements_file = base_path / 'analyzer.entitlements'
     if main_exe.exists():
-        sign_file(main_exe)
+        # Sign with entitlements to allow JIT, unsigned executable memory, etc.
+        sign_file(main_exe, options=['--entitlements', str(entitlements_file)])
 
     print("")
     print(f"Signing complete:")
