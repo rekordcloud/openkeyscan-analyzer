@@ -29,6 +29,36 @@ This repository implements a CNN model for musical key detection. It provides sc
 
 ## Setup and Installation
 
+### Python Version Requirement
+
+**This project requires Python 3.12.x** (not 3.13 or newer).
+
+**Why Python 3.12?**
+
+PyTorch (the deep learning framework this project uses) has different support for macOS architectures:
+- **PyTorch 2.3.0+**: Only supports ARM64 (Apple Silicon), dropped Intel Mac (x86_64) support
+- **PyTorch 2.2.2**: Last version with x86_64 wheels for Intel Macs
+- **Python 3.13**: Only compatible with PyTorch 2.5.0+, which lacks x86_64 support
+
+To build executables for **both ARM64 and x86_64 architectures**, we use:
+- Python 3.12.x (supports PyTorch 2.2.2)
+- PyTorch 2.2.2 (last version with both ARM64 and x86_64 wheels)
+
+**Installing Python 3.12:**
+
+Download the official macOS universal2 installer from [python.org/downloads/macos/](https://www.python.org/downloads/macos/):
+- Look for Python 3.12.10 or later in the 3.12 series
+- Download the "macOS 64-bit universal2 installer" (.pkg file)
+- Install it (provides both ARM64 and x86_64 support)
+
+After installation, verify:
+```sh
+python3.12 --version  # Should show Python 3.12.x
+file $(which python3.12)  # Should show "universal binary with 2 architectures"
+```
+
+### Installation Steps
+
 We recommend using Pipenv for dependency management and virtual environment handling:
 
 **Install Pipenv** (if not already installed):

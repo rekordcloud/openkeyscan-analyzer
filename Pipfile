@@ -4,10 +4,10 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-torch = ">=2.0"
-torchaudio = "*"
+torch = "==2.2.2"
+torchaudio = "==2.2.2"
 librosa = "*"
-numpy = "*"
+numpy = "<2.0"
 tqdm = "*"
 av = "*"
 
@@ -17,4 +17,4 @@ psutil = "*"
 pywin32-ctypes = "*"
 
 [requires]
-python_version = "3.13"
+python_version = "3.12"

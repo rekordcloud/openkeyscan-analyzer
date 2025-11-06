@@ -21,7 +21,10 @@
       "Bash(pipenv run pyinstaller:*)",
       "Bash(python3:*)",
       "Bash(./dist/openkeyscan-analyzer/openkeyscan-analyzer:*)",
-      "Bash(chmod:*)"
+      "Bash(chmod:*)",
+      "Bash(./build-mac-x64.sh:*)",
+      "Bash(pipenv --version:*)",
+      "WebFetch(domain:pypi.org)"
     ],
     "deny": [],
     "ask": []

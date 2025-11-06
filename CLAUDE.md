@@ -795,22 +795,39 @@ Ensure these are gitignored:
 36. ✅ **Added performance profiling** (2025-11-05) - instrumented server with PROFILE_PERFORMANCE env var
 37. ✅ **Created PERFORMANCE_INVESTIGATION.md** - detailed analysis of Windows slowdown
 38. ✅ **Created profile_performance.py** - standalone profiling script for detailed timing analysis
+39. ✅ **Downgraded to Python 3.12 and PyTorch 2.2.2** (2025-11-06) - for cross-architecture support (ARM64 + x86_64)
+    - PyTorch 2.3+ dropped macOS x86_64 support, only ARM64 available
+    - PyTorch 2.2.2 is last version with both ARM64 and x86_64 wheels
+    - Updated Pipfile to require Python 3.12.x and pin torch==2.2.2, numpy<2.0
+    - Added Python version check to _build-mac.sh with detailed error messaging
+    - Updated README.md with Python version requirement explanation
+    - Regenerated Pipfile.lock with Python 3.12 + torch 2.2.2 + numpy 1.26.4
+    - Verified x64 build works in Rosetta 2 terminal
+    - Set PIPENV_PYTHON=python3.12 in build script to ensure correct Python
 
 ### Known Working Configuration
 
 **Dependencies:**
-- Python: 3.13.2
-- torch: 2.9.0
-- torchaudio: 2.9.0
+- Python: 3.12.10 (**Required:** 3.12.x for cross-architecture support)
+- torch: 2.2.2 (last version with macOS x86_64 wheels)
+- torchaudio: 2.2.2
 - librosa: 0.11.0
-- numpy: 2.3.4
+- numpy: 1.26.4 (pinned to <2.0 for PyTorch 2.2.2 compatibility)
 - PyInstaller: 6.16.0
 - Supported Audio Formats: MP3, MP4, WAV, FLAC, OGG, M4A, AAC, AIFF, AU (9 total)
 
+**Python Version Requirement:**
+This project **requires Python 3.12.x** (not 3.13+) to support both ARM64 and x86_64 builds:
+- PyTorch 2.3.0+ dropped macOS x86_64 (Intel) support, only ARM64 wheels available
+- PyTorch 2.2.2 is the last version with both ARM64 and x86_64 macOS wheels
+- PyTorch 2.2.2 requires Python 3.8-3.12 (not compatible with 3.13+)
+- Use the universal2 installer from python.org for both architectures
+
 **Tested Platforms:**
-- **macOS**: 15.6.1 (Sequoia), ARM64 - Performance: ~0.44s per file
+- **macOS ARM64**: 15.6.1 (Sequoia), Apple Silicon - Performance: ~0.44s per file
+- **macOS x86_64**: 15.6.1 (Sequoia), Rosetta 2/Intel - Performance: ~45s per file (tested with Python 3.12 + torch 2.2.2)
 - **Windows**: 10 (Build 26100), MSYS2/Git Bash - Performance: ~20-21s per file
 
 ---
 
-*Last Updated: 2025-11-05*
+*Last Updated: 2025-11-06*
