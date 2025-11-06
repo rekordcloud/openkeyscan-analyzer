@@ -164,7 +164,14 @@ def dereference_symlinks(dist_path):
     print("="*70 + "\n")
 
 def codesign_macos(dist_path):
-    """Sign all executables and libraries with Apple Developer ID."""
+    """Sign all executables and libraries with Apple Developer ID.
+
+    Frameworks must be signed from the inside-out:
+    1. Framework contents (Python.framework/Versions/3.12/Python)
+    2. Framework bundle (Python.framework)
+    3. Other libraries (.dylib, .so)
+    4. Main executable
+    """
     print("\n" + "="*70)
     print("Post-build: Code signing for macOS")
     print("="*70)
@@ -183,47 +190,34 @@ def codesign_macos(dist_path):
     print(f"Target directory: {dist_path}")
     print("")
 
-    # Find all files that should be signed (executables, .dylib, .so)
-    files_to_sign = []
-
-    for root, dirs, files in os.walk(dist_path):
-        root_path = Path(root)
-        for file in files:
-            file_path = root_path / file
-
-            # Sign executables, dynamic libraries, and Python extensions
-            if (file_path.is_file() and
-                (file_path.suffix in ['.dylib', '.so'] or
-                 os.access(file_path, os.X_OK))):
-                files_to_sign.append(file_path)
-
-    if not files_to_sign:
-        print("No files to sign found")
-        return
-
-    print(f"Found {len(files_to_sign)} files to sign")
-    print("")
-
-    # Sign each file
     signed_count = 0
     skipped_count = 0
     failed_count = 0
 
-    for file_path in sorted(files_to_sign):
+    def sign_file(file_path, options=None):
+        """Sign a single file with proper options."""
+        nonlocal signed_count, skipped_count, failed_count
+
         relative_path = file_path.relative_to(dist_path)
 
+        # Base codesign command
+        cmd = [
+            'codesign',
+            '--sign', CODESIGN_IDENTITY,
+            '--force',
+            '--timestamp',
+            '--options', 'runtime',
+        ]
+
+        # Add custom options if provided
+        if options:
+            cmd.extend(options)
+
+        cmd.append(str(file_path))
+
         try:
-            # Sign with hardened runtime and timestamp
             result = subprocess.run(
-                [
-                    'codesign',
-                    '--sign', CODESIGN_IDENTITY,
-                    '--force',
-                    '--timestamp',
-                    '--options', 'runtime',
-                    '--deep',
-                    str(file_path)
-                ],
+                cmd,
                 capture_output=True,
                 text=True,
                 timeout=30
@@ -232,21 +226,92 @@ def codesign_macos(dist_path):
             if result.returncode == 0:
                 print(f"  [✓] Signed: {relative_path}")
                 signed_count += 1
+                return True
             else:
-                # Some files may already be signed or not signable - skip silently
-                if 'is already signed' in result.stderr or 'code object is not signed at all' in result.stderr:
+                # Some files may already be signed or not signable
+                if 'is already signed' in result.stderr:
                     skipped_count += 1
+                    return True
                 else:
-                    print(f"  [⚠] Skipped: {relative_path}")
+                    print(f"  [⚠] Failed: {relative_path}")
                     print(f"      {result.stderr.strip()}")
                     skipped_count += 1
+                    return False
 
         except subprocess.TimeoutExpired:
             print(f"  [✗] Timeout: {relative_path}")
             failed_count += 1
+            return False
         except Exception as e:
             print(f"  [✗] Error: {relative_path}: {e}")
             failed_count += 1
+            return False
+
+    # PHASE 1: Sign Python framework contents first (inside-out)
+    print("Phase 1: Signing Python framework contents...")
+    python_framework_contents = []
+
+    for root, dirs, files in os.walk(dist_path):
+        root_path = Path(root)
+        # Look for Python framework binaries
+        if 'Python.framework' in str(root_path):
+            for file in files:
+                file_path = root_path / file
+                # Sign the main Python binary inside the framework
+                if file_path.name == 'Python' and file_path.is_file():
+                    python_framework_contents.append(file_path)
+
+    for file_path in sorted(python_framework_contents):
+        sign_file(file_path, options=['--preserve-metadata=identifier,entitlements,flags,runtime'])
+
+    print("")
+
+    # PHASE 2: Sign Python framework bundles
+    print("Phase 2: Signing Python framework bundles...")
+    python_frameworks = []
+
+    for root, dirs, files in os.walk(dist_path):
+        root_path = Path(root)
+        for dir_name in dirs:
+            dir_path = root_path / dir_name
+            if dir_name.endswith('.framework'):
+                python_frameworks.append(dir_path)
+
+    # Remove duplicates and sort
+    python_frameworks = sorted(set(python_frameworks))
+
+    for framework_path in python_frameworks:
+        sign_file(framework_path, options=['--preserve-metadata=identifier,entitlements,flags,runtime'])
+
+    print("")
+
+    # PHASE 3: Sign all other dynamic libraries and extensions
+    print("Phase 3: Signing dynamic libraries and extensions...")
+    libraries = []
+
+    for root, dirs, files in os.walk(dist_path):
+        root_path = Path(root)
+        for file in files:
+            file_path = root_path / file
+
+            # Skip if already signed as framework content
+            if any(str(file_path).startswith(str(fw)) for fw in python_frameworks):
+                continue
+
+            # Sign dynamic libraries and Python extensions
+            if file_path.is_file() and file_path.suffix in ['.dylib', '.so']:
+                libraries.append(file_path)
+
+    for file_path in sorted(libraries):
+        sign_file(file_path)
+
+    print("")
+
+    # PHASE 4: Sign the main executable
+    print("Phase 4: Signing main executable...")
+    main_exe = dist_path / 'openkeyscan-analyzer'
+    if main_exe.exists():
+        sign_file(main_exe)
 
     print("")
     print(f"Signing complete:")
@@ -254,11 +319,31 @@ def codesign_macos(dist_path):
     print(f"  Skipped: {skipped_count}")
     print(f"  Failed: {failed_count}")
 
-    # Verify the main executable signature
-    main_exe = dist_path / 'openkeyscan-analyzer'
+    # Verify signatures
+    print("")
+    print("Verifying signatures...")
+
+    # Verify framework
+    if python_frameworks:
+        for framework_path in python_frameworks[:1]:  # Just verify the first one
+            print(f"Verifying: {framework_path.name}")
+            try:
+                result = subprocess.run(
+                    ['codesign', '--verify', '--verbose', str(framework_path)],
+                    capture_output=True,
+                    text=True,
+                    timeout=10
+                )
+                if result.returncode == 0:
+                    print(f"  [✓] Framework signature valid")
+                else:
+                    print(f"  [⚠] Framework verification failed: {result.stderr.strip()}")
+            except Exception as e:
+                print(f"  [✗] Verification error: {e}")
+
+    # Verify main executable
     if main_exe.exists():
-        print("")
-        print("Verifying main executable signature...")
+        print(f"Verifying: {main_exe.name}")
         try:
             result = subprocess.run(
                 ['codesign', '--verify', '--verbose', str(main_exe)],
@@ -267,7 +352,7 @@ def codesign_macos(dist_path):
                 timeout=10
             )
             if result.returncode == 0:
-                print(f"  [✓] Signature verified: {main_exe.name}")
+                print(f"  [✓] Executable signature valid")
             else:
                 print(f"  [⚠] Verification failed: {result.stderr.strip()}")
         except Exception as e:
