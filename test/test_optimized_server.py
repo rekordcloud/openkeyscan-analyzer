@@ -15,7 +15,7 @@ env['PROFILE_PERFORMANCE'] = '1'
 # Start the optimized server
 print("Starting optimized server with PROFILE_PERFORMANCE=1...")
 process = subprocess.Popen(
-    [sys.executable, "openkeyscan_analyzer_server_optimized.py", '-w', '1'],
+    [sys.executable, "../openkeyscan_analyzer_server_optimized.py", '-w', '1'],
     stdin=subprocess.PIPE,
     stdout=subprocess.PIPE,
     stderr=subprocess.PIPE,

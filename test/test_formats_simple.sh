@@ -5,7 +5,7 @@
 
 export PROFILE_PERFORMANCE=1
 
-EXE="./dist/openkeyscan-analyzer/openkeyscan-analyzer"
+EXE="../dist/openkeyscan-analyzer/openkeyscan-analyzer"
 
 # Test files
 declare -A TEST_FILES=(

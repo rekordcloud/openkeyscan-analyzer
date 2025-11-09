@@ -22,7 +22,7 @@ for format_name, test_file in test_files:
     env['PROFILE_PERFORMANCE'] = '1'
 
     process = subprocess.Popen(
-        ['pipenv', 'run', 'python', 'openkeyscan_analyzer_server.py', '-w', '1'],
+        ['pipenv', 'run', 'python', '../openkeyscan_analyzer_server.py', '-w', '1'],
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,

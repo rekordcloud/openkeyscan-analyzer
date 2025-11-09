@@ -20,7 +20,7 @@ TEST_FILES = {
     "MP4": "/Users/chris/Music/audio formats/serato.mp4",
 }
 
-EXE = "./dist/openkeyscan-analyzer/openkeyscan-analyzer"
+EXE = "../dist/openkeyscan-analyzer/openkeyscan-analyzer"
 
 def test_format(format_name, file_path):
     """Test a single format."""

@@ -6,7 +6,7 @@ import os
 import json
 import time
 
-exe_path = os.path.abspath("dist/openkeyscan-analyzer/openkeyscan-analyzer.exe")
+exe_path = os.path.abspath("../dist/openkeyscan-analyzer/openkeyscan-analyzer.exe")
 
 # Test files
 test_files = [

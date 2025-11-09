@@ -74,15 +74,15 @@ def test_format(format_name, file_path, use_exe=False):
         else:
             exe_name = 'openkeyscan-analyzer'
         cmd = [
-            os.path.abspath(f'dist/openkeyscan-analyzer/{exe_name}'),
+            os.path.abspath(f'../dist/openkeyscan-analyzer/{exe_name}'),
             '-w', '1'
         ]
     else:
         # Use pipenv run python on both platforms
         if sys.platform == 'win32':
-            cmd = ['pipenv', 'run', 'python', 'openkeyscan_analyzer_server.py', '-w', '1']
+            cmd = ['pipenv', 'run', 'python', '../openkeyscan_analyzer_server.py', '-w', '1']
         else:
-            cmd = ['pipenv', 'run', 'python', 'openkeyscan_analyzer_server.py', '-w', '1']
+            cmd = ['pipenv', 'run', 'python', '../openkeyscan_analyzer_server.py', '-w', '1']
 
     # Start server
     try:

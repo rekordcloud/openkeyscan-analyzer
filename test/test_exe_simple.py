@@ -7,7 +7,7 @@ import time
 import threading
 
 import os
-exe_path = os.path.abspath("dist/openkeyscan-analyzer/openkeyscan-analyzer.exe")
+exe_path = os.path.abspath("../dist/openkeyscan-analyzer/openkeyscan-analyzer.exe")
 
 print("Starting executable...")
 process = subprocess.Popen(

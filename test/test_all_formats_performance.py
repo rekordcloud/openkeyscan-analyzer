@@ -45,7 +45,7 @@ def test_individual_files():
 
         # Run the profiling script
         try:
-            cmd = [sys.executable, "profile_performance.py", file_path]
+            cmd = [sys.executable, "../profile_performance.py", file_path]
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
 
             # Parse timing from output
@@ -125,7 +125,7 @@ def test_server_mode():
 
     print("\nStarting server with PROFILE_PERFORMANCE=1...")
     process = subprocess.Popen(
-        [sys.executable, "openkeyscan_analyzer_server.py", '-w', '1'],
+        [sys.executable, "../openkeyscan_analyzer_server.py", '-w', '1'],
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,

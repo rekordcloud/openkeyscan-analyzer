@@ -11,7 +11,7 @@ import threading
 
 # Determine executable path based on platform
 if sys.platform == "win32":
-    exe_path = os.path.abspath("dist/openkeyscan-analyzer/openkeyscan-analyzer.exe")
+    exe_path = os.path.abspath("../dist/openkeyscan-analyzer/openkeyscan-analyzer.exe")
     # Test files for Windows
     test_files = [
         r"C:\Users\Chris\Music\Athys & Duster - Barfight.mp3",
@@ -19,7 +19,7 @@ if sys.platform == "win32":
         r"C:\Users\Chris\Music\Balthazar & JackRock - Andromeda.mp3"
     ]
 else:
-    exe_path = os.path.abspath("dist/openkeyscan-analyzer/openkeyscan-analyzer")
+    exe_path = os.path.abspath("../dist/openkeyscan-analyzer/openkeyscan-analyzer")
     # Test files for macOS
     test_files = [
         os.path.expanduser("~/Music/spotify/Athys & Duster - Barfight.mp3"),

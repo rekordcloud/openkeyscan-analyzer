@@ -42,7 +42,7 @@ except ImportError:
 class ServerTester:
     """Test harness for the key detection server."""
 
-    def __init__(self, server_script='openkeyscan_analyzer_server.py', workers=1, use_executable=False):
+    def __init__(self, server_script='../openkeyscan_analyzer_server.py', workers=1, use_executable=False):
         """
         Initialize the tester.
 
@@ -287,8 +287,8 @@ def main():
                         help="Number of worker threads for the server (default: 1)")
     parser.add_argument('--exe', action='store_true',
                         help="Use the built executable instead of Python script")
-    parser.add_argument('--exe-path', type=str, default='dist/openkeyscan-analyzer/openkeyscan-analyzer.exe',
-                        help="Path to the executable (default: dist/openkeyscan-analyzer/openkeyscan-analyzer.exe)")
+    parser.add_argument('--exe-path', type=str, default='../dist/openkeyscan-analyzer/openkeyscan-analyzer.exe',
+                        help="Path to the executable (default: ../dist/openkeyscan-analyzer/openkeyscan-analyzer.exe)")
     args = parser.parse_args()
 
     # Print memory tracking availability
@@ -306,7 +306,7 @@ def main():
             print("Please build the executable first with: pyinstaller openkeyscan_analyzer.spec")
             return
     else:
-        server_path = 'openkeyscan_analyzer_server.py'
+        server_path = '../openkeyscan_analyzer_server.py'
         use_executable = False
 
     tester = ServerTester(server_script=server_path, workers=args.workers, use_executable=use_executable)

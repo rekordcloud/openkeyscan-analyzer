@@ -35,7 +35,8 @@
       "Bash(timeout 30 python:*)",
       "Bash(timeout 45 python:*)",
       "Bash(timeout 180 python:*)",
-      "Bash(timeout 120 python:*)"
+      "Bash(timeout 120 python:*)",
+      "Bash(mkdir:*)"
     ],
     "deny": [],
     "ask": []

@@ -60,7 +60,7 @@ This file contains technical documentation and important context about this proj
    - Ideal for Electron/desktop app integration
    - Supports high-throughput analysis (20+ files/min)
 
-7. **test_server.py** - Server test harness
+7. **test/test_server.py** - Server test harness
    - Spawns server as subprocess
    - Tests with random MP3 files
    - Validates protocol and performance
@@ -265,9 +265,6 @@ The following symlinks are automatically replaced with actual files:
 MusicalKeyCNN-main/
 ├── openkeyscan_analyzer.py          # Main CLI entry point
 ├── openkeyscan_analyzer_server.py   # Server mode (stdin/stdout JSON protocol)
-├── test_server.py           # Server test harness (full test with file discovery)
-├── test_exe_quick.py        # Quick executable test with specific files
-├── test_exe_simple.py       # Simple executable stdout/stderr test
 ├── model.py                 # CNN architecture
 ├── dataset.py               # Dataset and Camelot mapping
 ├── eval.py                  # Evaluation utilities
@@ -283,6 +280,12 @@ MusicalKeyCNN-main/
 ├── PERFORMANCE_INVESTIGATION.md  # Windows performance investigation
 ├── checkpoints/
 │   └── keynet.pt           # Trained model weights (1.8MB)
+├── test/                   # Test scripts and test data
+│   ├── test_server.py      # Server test harness (full test with file discovery)
+│   ├── test_exe_quick.py   # Quick executable test with specific files
+│   ├── test_exe_simple.py  # Simple executable stdout/stderr test
+│   ├── test_*.py           # Additional test scripts
+│   └── test_*.sh           # Shell test scripts
 └── dist/                   # Build output (gitignored)
     └── openkeyscan-analyzer/       # Standalone executable distribution
         └── openkeyscan-analyzer.exe    # Server executable (Windows)
@@ -322,10 +325,10 @@ python openkeyscan_analyzer.py -f song.mp3 --device cpu
 pyinstaller openkeyscan_analyzer.spec
 
 # Test the built executable (quick test with 3 specific files)
-python test_exe_quick.py
+python test/test_exe_quick.py
 
 # Test with the full test harness (requires Python dependencies)
-python test_server.py --exe
+python test/test_server.py --exe
 
 # Package for distribution
 cd dist
@@ -339,10 +342,10 @@ zip -r openkeyscan-analyzer.zip openkeyscan-analyzer/
 python openkeyscan_analyzer_server.py
 
 # Test server with Python script (requires dependencies installed)
-python test_server.py
+python test/test_server.py
 
 # Test the built executable with specific files (Windows-friendly)
-python test_exe_quick.py
+python test/test_exe_quick.py
 ```
 
 ---
@@ -468,7 +471,7 @@ server.on('exit', (code) => {
 
 ```sh
 # Run test harness (analyzes 10 random files from ~/Music/spotify)
-python test_server.py
+python test/test_server.py
 ```
 
 **Expected Output:**
@@ -501,7 +504,7 @@ Average: 0.44s per file
 ```sh
 # Tests the executable with 3 specific MP3 files
 # Faster and more reliable than recursive file search on Windows
-python test_exe_quick.py
+python test/test_exe_quick.py
 ```
 
 **Expected Output:**
@@ -536,7 +539,7 @@ Done!
 ```sh
 # Tests executable with random MP3 files from a directory
 # Note: File discovery can be slow on Windows with large directories
-python test_server.py --exe -d ~/Music -n 5
+python test/test_server.py --exe -d ~/Music -n 5
 ```
 
 **Performance Notes:**
@@ -804,6 +807,10 @@ Ensure these are gitignored:
     - Regenerated Pipfile.lock with Python 3.12 + torch 2.2.2 + numpy 1.26.4
     - Verified x64 build works in Rosetta 2 terminal
     - Set PIPENV_PYTHON=python3.12 in build script to ensure correct Python
+40. ✅ **Reorganized test files into test/ folder** (2025-11-09) - improved project structure
+    - Created test/ folder for all test scripts
+    - Moved all test_*.py, test_*.sh, and test_*.txt files
+    - Updated documentation references
 
 ### Known Working Configuration
 
@@ -830,4 +837,4 @@ This project **requires Python 3.12.x** (not 3.13+) to support both ARM64 and x8
 
 ---
 
-*Last Updated: 2025-11-06*
+*Last Updated: 2025-11-09*

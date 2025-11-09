@@ -5,7 +5,7 @@ import subprocess
 import os
 import sys
 
-exe_path = os.path.abspath("dist/openkeyscan-analyzer/openkeyscan-analyzer.exe")
+exe_path = os.path.abspath("../dist/openkeyscan-analyzer/openkeyscan-analyzer.exe")
 test_file = r"C:\Users\Chris\Music\Athys & Duster - Barfight.mp3"
 
 print(f"Testing: {test_file}")
