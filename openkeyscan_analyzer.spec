@@ -163,6 +163,40 @@ def dereference_symlinks(dist_path):
     print(f"Successfully dereferenced {len(symlinks_found)} symlinks")
     print("="*70 + "\n")
 
+def cleanup_video_deps(dist_path):
+    """Remove video and image codec dependencies to reduce distribution size."""
+    print("\n" + "="*70)
+    print("Post-build: Removing video/image dependencies")
+    print("="*70)
+
+    # Import the cleanup module
+    try:
+        import subprocess
+        result = subprocess.run(
+            [sys.executable, 'cleanup_video_deps.py', str(dist_path)],
+            capture_output=True,
+            text=True,
+            timeout=60
+        )
+
+        # Print the output from the cleanup script
+        if result.stdout:
+            print(result.stdout)
+
+        if result.stderr:
+            print("Errors:", result.stderr)
+
+        if result.returncode != 0:
+            print(f"⚠️  Warning: Cleanup script exited with code {result.returncode}")
+        else:
+            print("✅ Video/image dependencies cleaned up successfully")
+
+    except Exception as e:
+        print(f"⚠️  Warning: Could not run cleanup script: {e}")
+        print("Continuing build anyway...")
+
+    print("="*70 + "\n")
+
 def codesign_macos(dist_path):
     """Sign all executables and libraries with Apple Developer ID.
 
@@ -446,5 +480,6 @@ def create_zip_archive(dist_path, output_name):
 dist_folder = Path(DISTPATH) / 'openkeyscan-analyzer'
 if dist_folder.exists():
     dereference_symlinks(dist_folder)
+    cleanup_video_deps(dist_folder)  # Remove video/image dependencies (~56 MB savings)
     codesign_macos(dist_folder)
     create_zip_archive(dist_folder, 'openkeyscan-analyzer')
