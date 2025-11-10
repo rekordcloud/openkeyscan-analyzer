@@ -753,7 +753,6 @@ Ensure these are gitignored:
 - [PyTorch](https://pytorch.org/)
 - [librosa](https://librosa.org/)
 - [PyInstaller](https://pyinstaller.org/)
-- [Camelot Wheel (Mixed In Key)](https://mixedinkey.com/camelot-wheel/)
 
 ---
 

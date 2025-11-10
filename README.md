@@ -192,22 +192,6 @@ To train a new key classification model on the MTG dataset, run:
 
 You can modify hyperparameters or training parameters by editing `train.py`.
 
-## Evaluation
-
-To evaluate a trained model (e.g., calculate MIREX scores on GiantSteps):
-
-`python eval.py`
-
-The output includes overall accuracy and weighted [MIREX scores](https://www.music-ir.org/mirex/wiki/2025:Audio_Key_Detection).
-
-The following table contains the percentage ratios and the weighted Mirex scores:
-
-| Method | Weighted | Correct | Fifth | Relative | Parallel | Other |
-| ------ | -------- | ------- | ----- |--------- | -------- | ----- |
-| `keynet.pt`| 73.51 | 66.72 | 8.11 | 6.79 | 3.48 | 14.90 |
-| Mixed In Key 8.3 | 75.70 | 69.37 | 8.11 | 5.13 | 3.64 | 13.74 |
-| RekordBox 7.12 | 65.53 | 56.79 | 11.92 | 5.96 | 4.97 | 20.36 |
-
 ## Literature
 
 Please cite and refer to the original publication for scientific use and further reading:
