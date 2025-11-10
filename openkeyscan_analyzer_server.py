@@ -27,8 +27,6 @@ import time
 # Solution: Reconfigure stdin/stdout to UTF-8 at runtime at MODULE LEVEL.
 # Must be done BEFORE any sys.stdin.readline() calls and at module level
 # (not inside a function) so it executes during import.
-#
-# Reference: lexicon-tagger project (working production solution)
 # ============================================================================
 sys.stdin.reconfigure(encoding="utf-8")
 sys.stdout.reconfigure(encoding="utf-8")
