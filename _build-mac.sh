@@ -108,6 +108,30 @@ pipenv run pyinstaller --noconfirm openkeyscan_analyzer.spec
 
 echo ""
 echo "======================================================================"
+echo "Post-build: Cleanup and packaging"
+echo "======================================================================"
+echo ""
+
+# Run video/image dependency cleanup (saves ~56 MB)
+echo "Removing video/image dependencies..."
+if [ -f "cleanup_video_deps.py" ]; then
+    pipenv run python cleanup_video_deps.py dist/openkeyscan-analyzer
+    echo "✓ Video/image dependencies cleaned"
+else
+    echo "  (cleanup_video_deps.py not found, skipping)"
+fi
+echo ""
+
+# Create ZIP archive using ditto (preserves code signatures)
+echo "Creating distribution archive..."
+if [ -f "dist/openkeyscan-analyzer.zip" ]; then
+    rm dist/openkeyscan-analyzer.zip
+fi
+ditto -c -k --keepParent dist/openkeyscan-analyzer dist/openkeyscan-analyzer.zip
+echo "✓ Created: dist/openkeyscan-analyzer.zip"
+
+echo ""
+echo "======================================================================"
 echo "Build Complete!"
 echo "======================================================================"
 echo ""
@@ -116,7 +140,7 @@ echo "  Executable: dist/openkeyscan-analyzer/openkeyscan-analyzer"
 echo "  Archive:    dist/openkeyscan-analyzer.zip"
 echo ""
 
-# Move zip file to distribution directory
+# Copy to distribution directory and clean up Python.framework
 DIST_DIR="$HOME/workspace/openkeyscan/openkeyscan-app/build/lib/mac/$ARCH_DIR"
 ZIP_FILE="dist/openkeyscan-analyzer.zip"
 
@@ -128,7 +152,24 @@ echo ""
 # Create destination directory if it doesn't exist
 mkdir -p "$DIST_DIR"
 
-# Move the zip file, replacing any existing file
+# Copy the build folder to distribution directory first
+echo "Copying build to distribution directory..."
+rm -rf "$DIST_DIR/openkeyscan-analyzer"
+cp -r dist/openkeyscan-analyzer "$DIST_DIR/"
+echo "✓ Copied to: $DIST_DIR/openkeyscan-analyzer"
+echo ""
+
+# Delete Python.framework from the distribution copy (causes signing issues, not needed)
+echo "Removing Python.framework from distribution..."
+if [ -d "$DIST_DIR/openkeyscan-analyzer/_internal/Python.framework" ]; then
+    rm -rf "$DIST_DIR/openkeyscan-analyzer/_internal/Python.framework"
+    echo "✓ Removed Python.framework"
+else
+    echo "  (Python.framework not found, skipping)"
+fi
+echo ""
+
+# Copy the zip file
 if [ -f "$ZIP_FILE" ]; then
     cp "$ZIP_FILE" "$DIST_DIR/openkeyscan-analyzer.zip"
     echo "✓ Installed: $DIST_DIR/openkeyscan-analyzer.zip"

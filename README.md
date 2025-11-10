@@ -89,20 +89,29 @@ pip install -r requirements.txt
 
 ## Key Prediction for Your Own Songs
 
-You can analyze audio files in multiple formats (MP3, MP4, WAV, FLAC, OGG, M4A, AAC, AIFF, AU) or entire folders using the provided model or your own trained model:
+This project provides a server mode for analyzing audio files in multiple formats (MP3, MP4, WAV, FLAC, OGG, M4A, AAC, AIFF, AU).
+
+**For production use**, we recommend using the standalone executable (see [Building a Standalone Executable](#building-a-standalone-executable) below).
+
+**For development/testing**, you can run the server directly:
 
 ```sh
-python openkeyscan_analyzer.py -f path/to/your_song.mp3
-python openkeyscan_analyzer.py -f path/to/your/music_folder/
+pipenv run python openkeyscan_analyzer_server.py
 ```
 
-The script prints a summary table with:
-- Filename
-- Classification index (0-23)
-- Index according to the Camelot Wheel (e.g., "8A" or "3B")
-- The corresponding key
+The server communicates via stdin/stdout using JSON messages. Each analysis request should be a JSON object with an `id` and `path`:
 
-You can set the model checkpoint path with `-m path/to/your_model.pt` and the computation device with `--device cuda` or `--device cpu`.
+```json
+{"id": "unique-id", "path": "/absolute/path/to/song.mp3"}
+```
+
+The server responds with results including:
+- Camelot notation (e.g., "8A" or "3B")
+- Open Key notation (e.g., "1m" or "5d")
+- Traditional key name (e.g., "E minor" or "C major")
+- Classification index (0-23)
+
+You can set the model checkpoint path with `-m path/to/your_model.pt`, the computation device with `--device cuda` or `--device cpu`, and the number of worker threads with `-w 2`.
 
 ## Building a Standalone Executable
 
@@ -119,11 +128,23 @@ You can create a standalone executable that bundles all dependencies and the tra
    pipenv install --dev
    ```
 
-2. Build the executable using the provided spec file:
+2. Build the executable for your architecture:
+
+   **For ARM64 (Apple Silicon):**
    ```sh
-   pyinstaller openkeyscan_analyzer.spec
+   ./build-mac-arm64.sh
    ```
-   The build process automatically dereferences all symlinks, ensuring the distribution is portable and can be safely zipped or copied.
+
+   **For x86_64 (Intel Mac or Rosetta 2):**
+   ```sh
+   ./build-mac-x64.sh
+   ```
+
+   The build process automatically:
+   - Compiles the server with PyInstaller
+   - Signs all binaries with your Developer ID (if configured)
+   - Removes unnecessary video/image dependencies (~56 MB savings)
+   - Creates a portable ZIP archive using `ditto` (preserves code signatures)
 
 3. The executable will be created in the `dist/openkeyscan-analyzer/` folder. You can run the server directly:
    ```sh

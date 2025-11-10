@@ -37,7 +37,9 @@
       "Bash(timeout 180 python:*)",
       "Bash(timeout 120 python:*)",
       "Bash(mkdir:*)",
-      "Bash(node test/test_spawn_encoding.js:*)"
+      "Bash(node test/test_spawn_encoding.js:*)",
+      "Bash(xattr:*)",
+      "Bash(codesign:*)"
     ],
     "deny": [],
     "ask": []
