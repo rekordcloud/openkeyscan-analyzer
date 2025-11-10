@@ -64,7 +64,7 @@ hiddenimports = [
 runtime_hooks = ['runtime_hook_scipy.py']
 
 a = Analysis(
-    ['openkeyscan_analyzer_server_optimized.py'],
+    ['openkeyscan_analyzer_server.py'],
     pathex=[str(base_path)],
     binaries=[],
     datas=datas,
@@ -95,6 +95,7 @@ exe_server = EXE(
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=target_arch,  # Set from environment variable (arm64, x86_64, or None)
+    python_options=['X utf8_mode=1'],  # Force UTF-8 mode for proper Unicode handling on Windows
     codesign_identity=None,
     entitlements_file=None,
 )
@@ -187,12 +188,12 @@ def cleanup_video_deps(dist_path):
             print("Errors:", result.stderr)
 
         if result.returncode != 0:
-            print(f"⚠️  Warning: Cleanup script exited with code {result.returncode}")
+            print(f"Warning: Cleanup script exited with code {result.returncode}")
         else:
-            print("✅ Video/image dependencies cleaned up successfully")
+            print("Video/image dependencies cleaned up successfully")
 
     except Exception as e:
-        print(f"⚠️  Warning: Could not run cleanup script: {e}")
+        print(f"Warning: Could not run cleanup script: {e}")
         print("Continuing build anyway...")
 
     print("="*70 + "\n")
