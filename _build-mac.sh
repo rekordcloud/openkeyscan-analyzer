@@ -122,27 +122,23 @@ else
 fi
 echo ""
 
-# Create ZIP archive using ditto (preserves code signatures)
-echo "Creating distribution archive..."
-if [ -f "dist/openkeyscan-analyzer.zip" ]; then
-    rm dist/openkeyscan-analyzer.zip
-fi
-ditto -c -k --keepParent dist/openkeyscan-analyzer dist/openkeyscan-analyzer.zip
-echo "✓ Created: dist/openkeyscan-analyzer.zip"
-
+# Remove unused OpenSSL libraries
+echo "Removing unused OpenSSL libraries..."
+rm -f dist/openkeyscan-analyzer/_internal/libssl.3.dylib
+rm -f dist/openkeyscan-analyzer/_internal/libcrypto.3.dylib
+echo "✓ Removed OpenSSL libraries"
 echo ""
+
 echo "======================================================================"
 echo "Build Complete!"
 echo "======================================================================"
 echo ""
 echo "Output:"
 echo "  Executable: dist/openkeyscan-analyzer/openkeyscan-analyzer"
-echo "  Archive:    dist/openkeyscan-analyzer.zip"
 echo ""
 
 # Copy to distribution directory and clean up Python.framework
 DIST_DIR="$HOME/workspace/openkeyscan/openkeyscan-app/build/lib/mac/$ARCH_DIR"
-ZIP_FILE="dist/openkeyscan-analyzer.zip"
 
 echo "Installing to distribution directory..."
 echo "  Architecture: $ARCH_DIR"
@@ -167,16 +163,6 @@ if [ -d "$DIST_DIR/openkeyscan-analyzer/_internal/Python.framework" ]; then
 else
     echo "  (Python.framework not found, skipping)"
 fi
-echo ""
-
-# Copy the zip file
-if [ -f "$ZIP_FILE" ]; then
-    cp "$ZIP_FILE" "$DIST_DIR/openkeyscan-analyzer.zip"
-    echo "✓ Installed: $DIST_DIR/openkeyscan-analyzer.zip"
-else
-    echo "Error: ZIP file not found at $ZIP_FILE"
-    exit 1
-fi
 
 echo ""
 echo "======================================================================"
@@ -186,6 +172,6 @@ echo ""
 echo "Test the build:"
 echo "  ./dist/openkeyscan-analyzer/openkeyscan-analyzer"
 echo ""
-echo "Distribution package:"
-echo "  $DIST_DIR/openkeyscan-analyzer.zip"
+echo "Distribution location:"
+echo "  $DIST_DIR/openkeyscan-analyzer/"
 echo ""

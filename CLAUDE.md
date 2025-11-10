@@ -130,27 +130,6 @@ def get_resource_path(relative_path):
 
 **Reason:** Allows the bundled executable to find the model file in PyInstaller's temporary extraction directory
 
-### 3. PyInstaller Spec File with Auto-Dereferencing
-
-**File:** `openkeyscan_analyzer.spec:72-127`
-
-**Key Features:**
-- Bundles `checkpoints/keynet.pt` model file
-- Includes hidden imports for sklearn, librosa, numba, soundfile, cffi
-- **Post-build hook** automatically replaces all symlinks with actual files
-- Ensures distribution is portable when zipped/copied
-
-**Why Symlink Dereferencing:**
-- PyInstaller creates 15 symlinks for torch, scipy, and Python framework libraries
-- Symlinks break when zipping or copying to other systems
-- Post-build hook runs automatically after COLLECT stage
-
-### 4. Standalone Dereference Script
-
-**File:** `dereference_symlinks.py`
-
-Standalone utility for manually dereferencing symlinks if needed. Not required for normal build process since spec file handles it automatically.
-
 ---
 
 ## Dependencies
