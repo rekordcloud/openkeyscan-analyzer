@@ -50,7 +50,6 @@ echo ======================================================================
 echo.
 echo Output:
 echo   Executable: dist\openkeyscan-analyzer\openkeyscan-analyzer.exe
-echo   Archive:    dist\openkeyscan-analyzer.zip
 echo.
 
 REM Detect architecture (Windows is typically x64)
@@ -61,24 +60,28 @@ if "%PROCESSOR_ARCHITECTURE%"=="x86" set ARCH_DIR=ia32
 
 REM Set destination directory
 set DEST_DIR=%USERPROFILE%\workspace\openkeyscan\OpenKeyScan-app\build\lib\win\%ARCH_DIR%
-set ZIP_FILE=dist\openkeyscan-analyzer.zip
 
-echo Installing to distribution directory...
-echo   Architecture: %ARCH_DIR%
-echo   Destination:  %DEST_DIR%
+echo ======================================================================
+echo Installing to distribution directory
+echo ======================================================================
+echo.
+echo Architecture: %ARCH_DIR%
+echo Destination:  %DEST_DIR%
 echo.
 
 REM Create destination directory if it doesn't exist
 if not exist "%DEST_DIR%" mkdir "%DEST_DIR%"
 
-REM Copy the zip file, replacing any existing file
-if exist "%ZIP_FILE%" (
-    copy /Y "%ZIP_FILE%" "%DEST_DIR%\openkeyscan-analyzer.zip"
-    echo Success: Installed: %DEST_DIR%\openkeyscan-analyzer.zip
-) else (
-    echo Error: ZIP file not found at %ZIP_FILE%
-    exit /b 1
+REM Remove existing build folder if it exists
+if exist "%DEST_DIR%\openkeyscan-analyzer" (
+    echo Removing existing build...
+    rmdir /s /q "%DEST_DIR%\openkeyscan-analyzer"
 )
+
+REM Copy the build folder to the destination
+echo Copying build to distribution directory...
+xcopy /E /I /Y dist\openkeyscan-analyzer "%DEST_DIR%\openkeyscan-analyzer"
+echo [+] Copied to: %DEST_DIR%\openkeyscan-analyzer
 
 echo.
 echo ======================================================================
@@ -88,6 +91,6 @@ echo.
 echo Test the build:
 echo   dist\openkeyscan-analyzer\openkeyscan-analyzer.exe
 echo.
-echo Distribution package:
-echo   %DEST_DIR%\openkeyscan-analyzer.zip
+echo Distribution location:
+echo   %DEST_DIR%\openkeyscan-analyzer\
 echo.
