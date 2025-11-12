@@ -503,121 +503,112 @@ Average: 0.44s per file
 
 ### Testing Reset Functionality
 
-**Quick Reset Test (Development):**
+**Quick Reset Test (Basic):**
 ```sh
-# Test reset with the Python server directly (fast)
-python test/test_reset_simple.py
+# Test reset acknowledgment and server responsiveness (fast)
+python test/test_reset_basic.py
 ```
 
-This test:
-1. Starts the server
-2. Sends 3 analysis requests
-3. Immediately sends reset command
-4. Verifies no stale results are received
-5. Sends a new request and confirms it works
+This test verifies:
+1. Server starts and sends ready signal
+2. Reset command is acknowledged with reset_complete
+3. Server remains responsive after reset (processes one file)
 
 **Expected Output:**
 ```
 Starting server...
 Waiting for ready signal...
-✓ Server ready
-
-Test file: song.mp3
-
-Sending 3 analysis requests...
-  Sent: req-0
-  Sent: req-1
-  Sent: req-2
-
-Waiting 0.5s for processing to start...
+[OK] Server ready
 
 Sending reset command...
 Waiting for reset_complete...
-✓ Reset complete (generation: 1)
+[OK] Reset complete (generation: 1)
 
-Sending new request after reset...
-Waiting for new result...
-✓ New request completed: 9A
+Verifying server is still responsive...
+Testing with file: song.mp3
+(This may take 20-60 seconds on Windows...)
+[OK] Server responded: 6A
 
 ============================================================
-✓ TEST PASSED!
+TEST PASSED!
   - Reset acknowledged: YES
-  - Stale results discarded: YES (0 received)
-  - New request works: YES
+  - Server stayed alive: YES
+  - Server responsive after reset: YES
 ============================================================
 ```
 
-**Comprehensive Reset Test (Built Executable):**
+**Comprehensive Reset Test:**
 ```sh
-# Test reset with the built executable (comprehensive)
-python test/test_reset.py
+# Test that stale results are actually discarded (comprehensive)
+python test/test_reset_comprehensive.py
 ```
 
-This test:
-1. Starts the built executable
-2. Sends 5 analysis requests that will take time to process
-3. Sends reset command while they're still running
-4. Verifies reset_complete is received
-5. Waits 3 seconds and confirms NO stale results arrive
-6. Sends 3 new requests and confirms they complete successfully
-7. Verifies subprocess stayed alive (no model reload)
+This test verifies:
+1. Server processes multiple requests before reset
+2. Reset command is sent while requests are processing
+3. NO stale results from pre-reset tasks are received
+4. New requests after reset work correctly
+5. Models stay loaded (no restart)
 
 **Expected Output:**
 ```
 ======================================================================
-Reset Command Test
+Comprehensive Reset Test
 ======================================================================
 
-Starting analyzer server...
-[OK] Server ready!
+Found 3 test files in ~/Music/spotify
 
-Finding audio files in: ~/Music/spotify
-Found 5 test files
+Starting server...
+Waiting for server to be ready...
+[OK] Server ready
 
 Phase 1: Sending requests before reset
-Sending 5 requests...
+----------------------------------------------------------------------
   Sent: pre-reset-0 (song1.mp3)
   Sent: pre-reset-1 (song2.mp3)
-  ...
+  Sent: pre-reset-2 (song3.mp3)
 
-Waiting 0.5s for processing to start...
+Waiting 1 second for processing to start...
 
 Phase 2: Sending reset command
-Waiting for reset_complete acknowledgment...
+----------------------------------------------------------------------
+Waiting for reset_complete...
 [OK] Reset complete (generation: 1)
 
-Phase 3: Verifying no stale results
-Waiting 3 seconds to check for stale results...
+Phase 3: Checking for stale results
+----------------------------------------------------------------------
+Waiting 10 seconds to collect any responses...
 [OK] No stale results received (all discarded by server)
 
 Phase 4: Testing new requests after reset
-Sending 3 new requests...
+----------------------------------------------------------------------
   Sent: post-reset-0 (song1.mp3)
-  ...
+  Sent: post-reset-1 (song2.mp3)
 
-Waiting for new results...
-  [SUCCESS] post-reset-0: 9A
-  [SUCCESS] post-reset-1: 4A
-  [SUCCESS] post-reset-2: 6A
-[OK] All new requests completed successfully
+Waiting for new results (may take 40-120 seconds on Windows)...
+  [OK] post-reset-0: 8A
+  [OK] post-reset-1: 4A
+
+[OK] All 2 new requests completed
 
 ======================================================================
 TEST PASSED!
-======================================================================
 
-Summary:
-  - Reset command acknowledged: YES
-  - Stale results discarded: YES (5 requests)
-  - New requests work: YES (3 completed)
-  - Server stayed alive: YES (no model reload)
+  Reset acknowledged: YES
+  Stale results discarded: YES
+  New requests work: YES
+  Server stayed alive: YES (no model reload)
+======================================================================
 ```
 
-**What the test confirms:**
+**What the tests confirm:**
 - ✅ Reset command is acknowledged with `reset_complete` message
 - ✅ Results from pre-reset tasks are **never sent to parent** (discarded by server)
 - ✅ New requests after reset work correctly
 - ✅ Subprocess stays alive with models loaded (no 1-2s reload delay)
 - ✅ Generation counter prevents race conditions
+
+**Note:** Tests use non-blocking I/O via threading to work reliably on Windows.
 
 ### Testing Built Executables
 

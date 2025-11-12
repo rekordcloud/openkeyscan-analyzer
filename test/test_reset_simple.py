@@ -42,7 +42,7 @@ def test_reset():
         try:
             msg = json.loads(line.strip())
             if msg.get('type') == 'ready':
-                print("✓ Server ready\n")
+                print("[OK] Server ready\n")
                 break
         except json.JSONDecodeError:
             pass
@@ -103,12 +103,12 @@ def test_reset():
             msg = json.loads(line.strip())
 
             if msg.get('type') == 'reset_complete':
-                print(f"✓ Reset complete (generation: {msg.get('generation')})\n")
+                print(f"[OK] Reset complete (generation: {msg.get('generation')})\n")
                 reset_ok = True
 
             if 'id' in msg and msg['id'].startswith('req-'):
                 results_received.append(msg['id'])
-                print(f"✗ UNEXPECTED: Received result for {msg['id']}")
+                print(f"[FAIL] UNEXPECTED: Received result for {msg['id']}")
 
         except json.JSONDecodeError:
             pass
@@ -135,10 +135,10 @@ def test_reset():
 
             if msg.get('id') == 'after-reset':
                 if msg.get('status') == 'success':
-                    print(f"✓ New request completed: {msg.get('camelot')}\n")
+                    print(f"[OK] New request completed: {msg.get('camelot')}\n")
                     new_result_ok = True
                 else:
-                    print(f"✗ New request failed: {msg.get('error')}\n")
+                    print(f"[FAIL] New request failed: {msg.get('error')}\n")
                 break
 
         except json.JSONDecodeError:
@@ -155,14 +155,14 @@ def test_reset():
     # Results
     print("=" * 60)
     if reset_ok and len(results_received) == 0 and new_result_ok:
-        print("✓ TEST PASSED!")
+        print("TEST PASSED!")
         print(f"  - Reset acknowledged: YES")
         print(f"  - Stale results discarded: YES (0 received)")
         print(f"  - New request works: YES")
         print("=" * 60)
         return True
     else:
-        print("✗ TEST FAILED!")
+        print("TEST FAILED!")
         print(f"  - Reset acknowledged: {'YES' if reset_ok else 'NO'}")
         print(f"  - Stale results discarded: {'YES' if len(results_received) == 0 else f'NO ({len(results_received)} received)'}")
         print(f"  - New request works: {'YES' if new_result_ok else 'NO'}")
