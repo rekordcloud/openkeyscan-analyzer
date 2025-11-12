@@ -373,6 +373,30 @@ python test/test_exe_quick.py
 {"type": "heartbeat"}   // Sent every 30s
 ```
 
+**Reset Command (NEW):**
+```json
+// Request (stops all processing without restarting)
+{"type": "reset"}
+
+// Response
+{"type": "reset_complete", "generation": 1}
+```
+
+The reset command allows the parent process to:
+- Stop all pending/running analysis tasks
+- Clear internal state and queues
+- **Keep models loaded in memory** (no reload delay)
+- Discard any results from tasks that were running before reset
+
+**How it works:**
+- Server maintains a "generation" counter that increments on each reset
+- Each analysis task is tagged with the generation it was submitted in
+- When a task completes, the server checks if the result is from the current generation
+- Results from old generations are silently discarded (never sent to parent)
+- This allows instant reset without killing the subprocess or reloading models
+
+**Use case:** When the user clears the analysis queue in the UI, send a reset command instead of restarting the subprocess. This eliminates the 1-2 second model reload delay.
+
 ### Server Features
 
 1. **Thread-Safe**: Each worker thread loads its own model instance (default: 1 worker)
@@ -476,6 +500,124 @@ Processed 10 files in 4.37s
 Success: 10, Failed: 0
 Average: 0.44s per file
 ```
+
+### Testing Reset Functionality
+
+**Quick Reset Test (Development):**
+```sh
+# Test reset with the Python server directly (fast)
+python test/test_reset_simple.py
+```
+
+This test:
+1. Starts the server
+2. Sends 3 analysis requests
+3. Immediately sends reset command
+4. Verifies no stale results are received
+5. Sends a new request and confirms it works
+
+**Expected Output:**
+```
+Starting server...
+Waiting for ready signal...
+✓ Server ready
+
+Test file: song.mp3
+
+Sending 3 analysis requests...
+  Sent: req-0
+  Sent: req-1
+  Sent: req-2
+
+Waiting 0.5s for processing to start...
+
+Sending reset command...
+Waiting for reset_complete...
+✓ Reset complete (generation: 1)
+
+Sending new request after reset...
+Waiting for new result...
+✓ New request completed: 9A
+
+============================================================
+✓ TEST PASSED!
+  - Reset acknowledged: YES
+  - Stale results discarded: YES (0 received)
+  - New request works: YES
+============================================================
+```
+
+**Comprehensive Reset Test (Built Executable):**
+```sh
+# Test reset with the built executable (comprehensive)
+python test/test_reset.py
+```
+
+This test:
+1. Starts the built executable
+2. Sends 5 analysis requests that will take time to process
+3. Sends reset command while they're still running
+4. Verifies reset_complete is received
+5. Waits 3 seconds and confirms NO stale results arrive
+6. Sends 3 new requests and confirms they complete successfully
+7. Verifies subprocess stayed alive (no model reload)
+
+**Expected Output:**
+```
+======================================================================
+Reset Command Test
+======================================================================
+
+Starting analyzer server...
+[OK] Server ready!
+
+Finding audio files in: ~/Music/spotify
+Found 5 test files
+
+Phase 1: Sending requests before reset
+Sending 5 requests...
+  Sent: pre-reset-0 (song1.mp3)
+  Sent: pre-reset-1 (song2.mp3)
+  ...
+
+Waiting 0.5s for processing to start...
+
+Phase 2: Sending reset command
+Waiting for reset_complete acknowledgment...
+[OK] Reset complete (generation: 1)
+
+Phase 3: Verifying no stale results
+Waiting 3 seconds to check for stale results...
+[OK] No stale results received (all discarded by server)
+
+Phase 4: Testing new requests after reset
+Sending 3 new requests...
+  Sent: post-reset-0 (song1.mp3)
+  ...
+
+Waiting for new results...
+  [SUCCESS] post-reset-0: 9A
+  [SUCCESS] post-reset-1: 4A
+  [SUCCESS] post-reset-2: 6A
+[OK] All new requests completed successfully
+
+======================================================================
+TEST PASSED!
+======================================================================
+
+Summary:
+  - Reset command acknowledged: YES
+  - Stale results discarded: YES (5 requests)
+  - New requests work: YES (3 completed)
+  - Server stayed alive: YES (no model reload)
+```
+
+**What the test confirms:**
+- ✅ Reset command is acknowledged with `reset_complete` message
+- ✅ Results from pre-reset tasks are **never sent to parent** (discarded by server)
+- ✅ New requests after reset work correctly
+- ✅ Subprocess stays alive with models loaded (no 1-2s reload delay)
+- ✅ Generation counter prevents race conditions
 
 ### Testing Built Executables
 
@@ -789,6 +931,16 @@ Ensure these are gitignored:
     - Created test/ folder for all test scripts
     - Moved all test_*.py, test_*.sh, and test_*.txt files
     - Updated documentation references
+41. ✅ **Implemented reset command** (2025-11-12) - allows stopping all processing without subprocess restart
+    - Added generation counter to track task epochs in Python server
+    - Modified process_request() to tag results with generation number
+    - Added reset() method that increments generation and discards stale results
+    - Created TypeScript reset() method in KeyDetectionService
+    - Updated main.ts IPC handler to use reset() instead of stopAndRestart()
+    - Eliminates 1-2 second model reload delay when clearing analysis queue
+    - Created test/test_reset.py for comprehensive reset testing
+    - Created test/test_reset_simple.py for quick development testing
+    - Updated CLAUDE.md with reset command protocol documentation
 
 ### Known Working Configuration
 

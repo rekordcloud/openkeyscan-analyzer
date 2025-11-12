@@ -294,6 +294,10 @@ class KeyDetectionServer:
 
         self.thread_local = threading.local()
 
+        # Generation counter for reset functionality
+        self.generation = 0
+        self.generation_lock = threading.Lock()
+
         print(f"Optimized Server Configuration:", file=sys.stderr)
         print(f"  Workers: {self.num_workers}", file=sys.stderr)
         print(f"  Model path: {self.model_path}", file=sys.stderr)
@@ -387,7 +391,7 @@ class KeyDetectionServer:
         except Exception as e:
             print(f"Error sending message: {e}", file=sys.stderr)
 
-    def process_request(self, request):
+    def process_request(self, request, generation):
         """Process a single key detection request."""
         request_id = request.get('id', 'unknown')
         file_path = request.get('path', '')
@@ -404,7 +408,8 @@ class KeyDetectionServer:
                     'id': request_id,
                     'status': 'error',
                     'error': 'File not found',
-                    'filename': audio_path.name
+                    'filename': audio_path.name,
+                    'generation': generation
                 }
 
             if audio_path.suffix.lower() not in SUPPORTED_FORMATS:
@@ -413,7 +418,8 @@ class KeyDetectionServer:
                     'id': request_id,
                     'status': 'error',
                     'error': f'Unsupported format. Supported: {formats_str}',
-                    'filename': audio_path.name
+                    'filename': audio_path.name,
+                    'generation': generation
                 }
 
             # Preprocess audio
@@ -467,7 +473,8 @@ class KeyDetectionServer:
                 'openkey': openkey_str,
                 'key': key_text,
                 'class_id': pred,
-                'filename': audio_path.name
+                'filename': audio_path.name,
+                'generation': generation
             }
 
         except Exception as e:
@@ -478,15 +485,51 @@ class KeyDetectionServer:
                 'id': request_id,
                 'status': 'error',
                 'error': str(e),
-                'filename': Path(file_path).name if file_path else 'unknown'
+                'filename': Path(file_path).name if file_path else 'unknown',
+                'generation': generation
             }
+
+    def reset(self):
+        """Reset the server state without reloading models."""
+        with self.generation_lock:
+            self.generation += 1
+            current_gen = self.generation
+
+        print(f"[RESET] Generation incremented to {current_gen}", file=sys.stderr)
+        print(f"[RESET] All pending tasks from generation {current_gen - 1} will be discarded", file=sys.stderr)
+
+        return current_gen
 
     def handle_request(self, line):
         """Parse and handle a request line."""
         try:
             request = json.loads(line)
-            response = self.process_request(request)
-            self.send_message(response)
+
+            # Check if this is a reset command
+            if request.get('type') == 'reset':
+                print(f"[RESET] Reset command received", file=sys.stderr)
+                new_generation = self.reset()
+                self.send_message({'type': 'reset_complete', 'generation': new_generation})
+                return
+
+            # Capture current generation for this request
+            with self.generation_lock:
+                request_generation = self.generation
+
+            # Submit task to executor with generation tracking
+            def process_and_check():
+                result = self.process_request(request, request_generation)
+
+                # Check if result is from current generation before sending
+                with self.generation_lock:
+                    if result['generation'] == self.generation:
+                        self.send_message(result)
+                    else:
+                        print(f"[DISCARD] Result from generation {result['generation']} "
+                              f"discarded (current: {self.generation})", file=sys.stderr)
+
+            self.executor.submit(process_and_check)
+
         except json.JSONDecodeError as e:
             print(f"Invalid JSON: {e}", file=sys.stderr)
         except Exception as e:
