@@ -297,6 +297,10 @@ class KeyDetectionServer:
         # Generation counter for reset functionality
         self.generation = 0
         self.generation_lock = threading.Lock()
+        
+        # Track active futures for reset functionality
+        self.active_futures = set()
+        self.futures_lock = threading.Lock()
 
         print(f"Optimized Server Configuration:", file=sys.stderr)
         print(f"  Workers: {self.num_workers}", file=sys.stderr)
@@ -400,6 +404,11 @@ class KeyDetectionServer:
         timings = {}
         request_start = time.time()
 
+        # Helper function to check if generation has changed (reset was called)
+        def check_generation():
+            with self.generation_lock:
+                return self.generation != generation
+
         try:
             audio_path = Path(file_path)
 
@@ -422,12 +431,20 @@ class KeyDetectionServer:
                     'generation': generation
                 }
 
+            # Check generation before starting expensive operations
+            if check_generation():
+                return None  # Signal that task was cancelled
+
             # Preprocess audio
             if profile:
                 t0 = time.time()
             spec_tensor = preprocess_audio(audio_path)
             if profile:
                 timings['preprocess_audio'] = time.time() - t0
+
+            # Check generation after preprocessing (before inference)
+            if check_generation():
+                return None
 
             # Move to device and add batch dimension
             if profile:
@@ -436,6 +453,10 @@ class KeyDetectionServer:
             spec_tensor = spec_tensor.unsqueeze(0)  # Add batch dimension
             if profile:
                 timings['to_device'] = time.time() - t0
+
+            # Check generation before inference
+            if check_generation():
+                return None
 
             # Run inference
             if profile:
@@ -447,6 +468,10 @@ class KeyDetectionServer:
                 pred = int(pred_tensor.cpu().numpy()[0])
             if profile:
                 timings['model_inference'] = time.time() - t0
+
+            # Check generation after inference (before formatting)
+            if check_generation():
+                return None
 
             # Format output
             if profile:
@@ -494,9 +519,18 @@ class KeyDetectionServer:
         with self.generation_lock:
             self.generation += 1
             current_gen = self.generation
-
-        print(f"[RESET] Generation incremented to {current_gen}", file=sys.stderr)
-        print(f"[RESET] All pending tasks from generation {current_gen - 1} will be discarded", file=sys.stderr)
+        
+        # Wait for all active tasks to finish (they'll exit early due to generation check)
+        with self.futures_lock:
+            active_count = len(self.active_futures)
+            if active_count > 0:
+                # Copy the set to avoid modification during iteration
+                futures_to_wait = list(self.active_futures)
+        
+        # Wait for futures to complete (with timeout to avoid hanging)
+        from concurrent.futures import wait
+        if active_count > 0:
+            wait(futures_to_wait, timeout=5.0)
 
         return current_gen
 
@@ -507,9 +541,11 @@ class KeyDetectionServer:
 
             # Check if this is a reset command
             if request.get('type') == 'reset':
-                print(f"[RESET] Reset command received", file=sys.stderr)
                 new_generation = self.reset()
+                # Send reset_complete immediately
                 self.send_message({'type': 'reset_complete', 'generation': new_generation})
+                # Send reset_idle after waiting for tasks to finish
+                self.send_message({'type': 'reset_idle', 'generation': new_generation})
                 return
 
             # Capture current generation for this request
@@ -517,18 +553,32 @@ class KeyDetectionServer:
                 request_generation = self.generation
 
             # Submit task to executor with generation tracking
+            # Use a list to allow mutation in closure
+            future_ref = [None]
+            
             def process_and_check():
-                result = self.process_request(request, request_generation)
+                try:
+                    result = self.process_request(request, request_generation)
 
-                # Check if result is from current generation before sending
-                with self.generation_lock:
-                    if result['generation'] == self.generation:
-                        self.send_message(result)
-                    else:
-                        print(f"[DISCARD] Result from generation {result['generation']} "
-                              f"discarded (current: {self.generation})", file=sys.stderr)
+                    # If task was cancelled (returned None), don't send anything
+                    if result is None:
+                        return
 
-            self.executor.submit(process_and_check)
+                    # Check if result is from current generation before sending
+                    with self.generation_lock:
+                        if result['generation'] == self.generation:
+                            self.send_message(result)
+                finally:
+                    # Remove future from active set when done
+                    with self.futures_lock:
+                        if future_ref[0] is not None:
+                            self.active_futures.discard(future_ref[0])
+
+            # Track the future before submitting (to avoid race condition)
+            with self.futures_lock:
+                future = self.executor.submit(process_and_check)
+                future_ref[0] = future
+                self.active_futures.add(future)
 
         except json.JSONDecodeError as e:
             print(f"Invalid JSON: {e}", file=sys.stderr)
