@@ -1,6 +1,8 @@
-# Musical Key CNN
+# OpenKeyScan
 
-This repository provides a full pipeline for musical key classification based on convolutional neural networks, inspired by the paper [\[1\]](#literature). It contains scripts for preprocessing, training, evaluation, and prediction of key labels on new music tracks, using the GiantSteps and GiantSteps-MTG datasets and the [Camelot Wheel](https://mixedinkey.com/camelot-wheel/) for key mapping.
+OpenKeyScan is a deep learning tool for automatically detecting the musical key of audio files. Built with convolutional neural networks and inspired by the research paper [\[1\]](#literature), it can analyze individual tracks or entire music libraries, outputting results in both Camelot Wheel and Open Key notation formats. The project includes complete scripts for dataset preprocessing, model training, performance evaluation, and real-world key prediction, using the GiantSteps and GiantSteps-MTG datasets for training and validation.
+
+OpenKeyScan is based on and extends the original [MusicalKeyCNN](https://github.com/a1ex90/MusicalKeyCNN) implementation by [a1ex90](https://github.com/a1ex90).
 
 ---
 
@@ -19,7 +21,7 @@ This repository provides a full pipeline for musical key classification based on
 
 ## Description
 
-This repository implements a CNN model for musical key detection. It provides scripts to:
+OpenKeyScan implements a CNN model for musical key detection. It provides scripts to:
 - Preprocess datasets (extract CQT spectrograms, prepare annotations, augment with pitch shifts)
 - Train the model from scratch
 - Evaluate model performance with [MIREX key evaluation metrics](https://www.music-ir.org/mirex/wiki/2025:Audio_Key_Detection)
