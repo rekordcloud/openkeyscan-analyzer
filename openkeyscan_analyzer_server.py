@@ -288,7 +288,13 @@ class KeyDetectionServer:
             self.model_path = model_path
 
         if device is None:
-            self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+            # Auto-select best available device: CUDA > MPS > CPU
+            if torch.cuda.is_available():
+                self.device = torch.device('cuda')
+            elif torch.backends.mps.is_available():
+                self.device = torch.device('mps')
+            else:
+                self.device = torch.device('cpu')
         else:
             self.device = torch.device(device)
 
