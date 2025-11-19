@@ -126,7 +126,7 @@ def get_resource_path(relative_path):
     return base_path / relative_path
 ```
 
-**Usage:** Default model path now uses `get_resource_path('checkpoints/keynet.pt')`
+**Usage:** Default model path now uses `get_resource_path('checkpoints/custom/openkeyscan1.pt')`
 
 **Reason:** Allows the bundled executable to find the model file in PyInstaller's temporary extraction directory
 
@@ -188,7 +188,7 @@ pyinstaller openkeyscan_analyzer.spec
    - Executable binary
    - Python runtime and libraries
    - All dependencies (PyTorch, librosa, etc.)
-   - Trained model (`checkpoints/keynet.pt`)
+   - Trained model (`checkpoints/custom/openkeyscan1.pt`)
 4. **Post-processing**: Automatically dereferences 15 symlinks to actual files
 
 ### Build Output

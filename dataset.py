@@ -2,6 +2,7 @@ from pathlib import Path
 import random
 import torch
 import pickle
+import json
 from torch.utils.data import Dataset
 
 # Mapping from key string to Camelot Wheel index
@@ -60,31 +61,110 @@ class KeyDataset(Dataset):
     Attributes:
         data (list): List of (filename, camelot_index) pairs for valid preprocessed data.
     """
-    def __init__(self, root_dir, preprocessed_dir, chunk_samples=100, pitch_range=(-4, 7)):
-        root = Path(root_dir)
-        self.annotations_path = root / 'annotations' / 'annotations.txt'
+    def __init__(self, root_dir, preprocessed_dir, chunk_samples=100, pitch_range=(-4, 7), json_path=None):
         self.preprocessed_dir = Path(preprocessed_dir)
         self.chunk_samples = chunk_samples
         self.pitch_range = pitch_range
 
         self.data = []
-        with open(self.annotations_path, "r") as f:
-            header = f.readline()
-            for line in f:
-                parts = line.strip().split("\t")
-                if len(parts) == 3:
-                    file_num, key_str, confidence = parts[0], parts[1], int(parts[2])
-                    # Ensure the key is in the mapping and has high confidence
-                    if key_str in CAMELOT_MAPPING and confidence == 2:
-                        camelot_idx = CAMELOT_MAPPING[key_str]
-                        filename = f"{file_num}.LOFI"
-                        # Sanity check: ensure all expected pitch-shifted spectrograms exist
-                        expected = self.pitch_range[1] - self.pitch_range[0] + 1
-                        files_found = len(list(self.preprocessed_dir.glob(f'{filename}_*')))
-                        if files_found < expected:
-                            print(f'File {filename} not preprocessed correctly. Found {files_found} spectrograms.')
-                            continue
-                        self.data.append((filename, camelot_idx))
+
+        if json_path:
+            # Load from JSON file
+            self._load_from_json(json_path)
+        else:
+            # Legacy mode: load from annotations.txt
+            root = Path(root_dir)
+            self.annotations_path = root / 'annotations' / 'annotations.txt'
+
+            with open(self.annotations_path, "r") as f:
+                header = f.readline()
+                for line in f:
+                    parts = line.strip().split("\t")
+                    if len(parts) == 3:
+                        file_num, key_str, confidence = parts[0], parts[1], int(parts[2])
+                        # Ensure the key is in the mapping and has high confidence
+                        if key_str in CAMELOT_MAPPING and confidence == 2:
+                            camelot_idx = CAMELOT_MAPPING[key_str]
+                            filename = f"{file_num}.LOFI"
+                            # Sanity check: ensure all expected pitch-shifted spectrograms exist
+                            expected = self.pitch_range[1] - self.pitch_range[0] + 1
+                            files_found = len(list(self.preprocessed_dir.glob(f'{filename}_*')))
+                            if files_found < expected:
+                                print(f'File {filename} not preprocessed correctly. Found {files_found} spectrograms.')
+                                continue
+                            self.data.append((filename, camelot_idx))
+
+    def _load_from_json(self, json_path):
+        """
+        Load dataset from correct_keys.json file.
+
+        Args:
+            json_path: Path to correct_keys.json file
+        """
+        with open(json_path, 'r', encoding='utf-8') as f:
+            entries = json.load(f)
+
+        skipped_dual_key = 0
+        skipped_low_confidence = 0
+        missing_spectrograms = 0
+        unknown_keys = []
+
+        print(f"Loading dataset from JSON: {json_path}")
+        print(f"Total entries in JSON: {len(entries)}")
+
+        for entry in entries:
+            # Filter by confidence
+            if entry.get('confidence') != 'high':
+                skipped_low_confidence += 1
+                continue
+
+            notation = entry.get('notation', '')
+
+            # Skip dual-key entries (contain "/")
+            if '/' in notation:
+                skipped_dual_key += 1
+                continue
+
+            # Validate notation exists in CAMELOT_MAPPING
+            if notation not in CAMELOT_MAPPING:
+                unknown_keys.append((entry.get('filename', 'unknown'), notation))
+                continue
+
+            camelot_idx = CAMELOT_MAPPING[notation]
+
+            # Extract base filename (remove folder prefix and extension)
+            filename_full = entry.get('filename', '')
+            # Extract just the filename part (e.g., "dataset mtg/5061.LOFI.mp3" -> "5061.LOFI")
+            filename = Path(filename_full).stem
+
+            # Sanity check: ensure all expected pitch-shifted spectrograms exist
+            expected = self.pitch_range[1] - self.pitch_range[0] + 1
+            files_found = len(list(self.preprocessed_dir.glob(f'{filename}_*')))
+            if files_found < expected:
+                missing_spectrograms += 1
+                continue
+
+            self.data.append((filename, camelot_idx))
+
+        # Print summary
+        print(f"\nDataset loading summary:")
+        print(f"  High-confidence entries: {len(entries) - skipped_low_confidence}")
+        print(f"  Skipped (low confidence): {skipped_low_confidence}")
+        print(f"  Skipped (dual-key notation): {skipped_dual_key}")
+        print(f"  Skipped (missing spectrograms): {missing_spectrograms}")
+        print(f"  Valid entries loaded: {len(self.data)}")
+
+        # Error out if unknown keys found
+        if unknown_keys:
+            print(f"\nERROR: Found {len(unknown_keys)} entries with unknown key notation:")
+            for filename, notation in unknown_keys[:10]:
+                print(f"  - {filename}: '{notation}'")
+            if len(unknown_keys) > 10:
+                print(f"  ... and {len(unknown_keys) - 10} more")
+            print(f"\nValid keys are:")
+            for key in sorted(CAMELOT_MAPPING.keys()):
+                print(f"  - {key}")
+            raise ValueError(f"Found {len(unknown_keys)} entries with unknown key notation. Please fix the JSON file.")
 
     def __len__(self):
         """

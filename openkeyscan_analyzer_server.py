@@ -283,7 +283,7 @@ class KeyDetectionServer:
         self.executor = ThreadPoolExecutor(max_workers=num_workers)
 
         if model_path is None:
-            self.model_path = get_resource_path('checkpoints/keynet.pt')
+            self.model_path = get_resource_path('checkpoints/custom/openkeyscan1.pt')
         else:
             self.model_path = model_path
 

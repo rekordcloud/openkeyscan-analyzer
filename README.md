@@ -154,7 +154,7 @@ You can create a standalone executable that bundles all dependencies and the tra
 4. The entire `dist/openkeyscan-analyzer/` folder can be copied to any macOS system and run without Python or any dependencies installed.
 
 **Note:**
-- The bundled application includes the trained model (`keynet.pt`), so you don't need to specify the model path
+- The bundled application includes the trained model (`custom/openkeyscan1.pt`), so you don't need to specify the model path
 - The executable folder is approximately 780MB due to PyTorch, librosa, and scientific computing dependencies (numpy, scipy, scikit-learn)
 - The spec file automatically replaces all symlinks with actual files during the build process, making the distribution fully portable
 - On **macOS**, all supported audio formats (MP3, MP4, WAV, FLAC, OGG, M4A, AAC, AIFF, AU) use native Core Audio frameworks, so no additional dependencies are needed

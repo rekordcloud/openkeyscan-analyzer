@@ -120,17 +120,81 @@ def print_mirex_report(scores):
     print("="*40)
 
 def main():
-    root_dir = Path('Dataset/giantsteps-key-dataset')
-    preprocessed_dir = Path('Dataset/giantsteps-preprocessed-audio')
-    model_file_path = Path('checkpoints') / 'keynet.pt'  # Change as needed
+    import argparse
 
-    dataset = KeyDataset(root_dir, preprocessed_dir, chunk_samples=float('inf'), pitch_range=(0,0))
+    parser = argparse.ArgumentParser(description='Evaluate key detection model with MIREX metrics')
+    parser.add_argument('--model', type=str, help='Path to trained model file')
+    parser.add_argument('--json-file', type=str, help='Path to correct_keys.json file')
+    parser.add_argument('--preprocessed-dir', type=str, default='Dataset/giantsteps-preprocessed-audio', help='Directory with preprocessed spectrograms')
+    parser.add_argument('--dataset-dir', type=str, help='Dataset directory (legacy mode)')
+    parser.add_argument('--device', type=str, choices=['cpu', 'cuda'], help='Force device (default: auto-detect)')
+
+    args = parser.parse_args()
+
+    # Determine device
+    if args.device:
+        DEVICE = torch.device(args.device)
+    else:
+        DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+    print("=" * 80)
+    print("KEY DETECTION MODEL EVALUATION")
+    print("=" * 80)
+    print(f"Model: {args.model}")
+    print(f"Device: {DEVICE}")
+    print()
+
+    # Load dataset
+    if args.json_file:
+        # JSON mode
+        print("=== JSON Mode ===")
+        print(f"JSON file: {args.json_file}")
+        print(f"Preprocessed dir: {args.preprocessed_dir}")
+        dataset = KeyDataset(
+            root_dir=None,
+            preprocessed_dir=Path(args.preprocessed_dir),
+            chunk_samples=float('inf'),
+            pitch_range=(0, 0),
+            json_path=Path(args.json_file)
+        )
+    else:
+        # Legacy mode
+        print("=== Legacy Mode ===")
+        if args.dataset_dir:
+            root_dir = Path(args.dataset_dir)
+        else:
+            root_dir = Path('Dataset/giantsteps-key-dataset')
+        print(f"Dataset dir: {root_dir}")
+        print(f"Preprocessed dir: {args.preprocessed_dir}")
+        dataset = KeyDataset(
+            root_dir,
+            Path(args.preprocessed_dir),
+            chunk_samples=float('inf'),
+            pitch_range=(0, 0)
+        )
+
+    print(f"Dataset size: {len(dataset)}")
+    print()
+
     val_loader = DataLoader(dataset, batch_size=1, shuffle=False)
-    DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    model = load_model(model_file_path, DEVICE)
+    # Load model
+    model_path = Path(args.model)
+    if not model_path.exists():
+        print(f"Error: Model file not found: {model_path}")
+        return
 
+    print("Loading model...")
+    model = load_model(model_path, DEVICE)
+    print("Model loaded successfully")
+    print()
+
+    # Evaluate
+    print("Running evaluation...")
     scores = evaluate_mirex(model, val_loader, DEVICE)
+    print()
+
+    # Print results
     print_mirex_report(scores)
 
 if __name__ == "__main__":
