@@ -9,7 +9,7 @@ import time
 from pathlib import Path
 
 # Test file
-TEST_FILE = Path.home() / "Music" / "cloud test" / "Mob Tactics - Now Is the Time.mp3"
+TEST_FILE = Path("/Volumes/Storage/Music/Luca Agnelli - Apollo.mp3")
 
 if not TEST_FILE.exists():
     print(f"Test file not found: {TEST_FILE}")
@@ -25,7 +25,7 @@ def test_device(device_name, num_runs=3):
 
     # Start server with specified device
     process = subprocess.Popen(
-        ['pipenv', 'run', 'python', 'openkeyscan_analyzer_server.py', '--device', device_name],
+        ['pipenv', 'run', 'python', 'openkeyscan_analyzer_server.py', '--device', device_name, '-m', 'checkpoints/keynet.pt'],
         cwd=project_root,
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,

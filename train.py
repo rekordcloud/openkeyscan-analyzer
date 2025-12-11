@@ -14,7 +14,7 @@ if __name__ == '__main__':
     parser.add_argument('--preprocessed-dir', type=str, default='Dataset/mtg-preprocessed-audio', help='Directory with preprocessed spectrograms')
     parser.add_argument('--dataset-dir', type=str, help='Dataset directory (legacy mode)')
     parser.add_argument('--model-name', type=str, help='Output model filename (saved in checkpoints/)')
-    parser.add_argument('--batch-size', type=int, default=32, help='Batch size for training')
+    parser.add_argument('--batch-size', type=int, default=64, help='Batch size for training')
     parser.add_argument('--learning-rate', type=float, default=1e-3, help='Initial learning rate')
     parser.add_argument('--num-epochs', type=int, default=2000, help='Maximum number of epochs')
     parser.add_argument('--patience', type=int, default=50, help='Early stopping patience')
@@ -28,7 +28,13 @@ if __name__ == '__main__':
     model_file_path.parent.mkdir(exist_ok=True)
 
     # --- Hyperparameters ---
-    DEVICE          = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    # Check for MPS (Apple Silicon), CUDA (NVIDIA), or fall back to CPU
+    if torch.backends.mps.is_available():
+        DEVICE = torch.device('mps')
+    elif torch.cuda.is_available():
+        DEVICE = torch.device('cuda')
+    else:
+        DEVICE = torch.device('cpu')
     BATCH_SIZE      = args.batch_size
     LEARNING_RATE   = args.learning_rate
     NUM_EPOCHS      = args.num_epochs
