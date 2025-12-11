@@ -72,6 +72,7 @@ def evaluate_mirex(model, dataloader, device):
     """
     counts = {"correct": 0, "fifth": 0, "relative": 0, "parallel": 0, "rest": 0}
     total = 0
+
     with torch.no_grad():
         for batch in tqdm(dataloader, desc="Evaluating"):
             inputs = batch['spec'].to(device)
@@ -127,15 +128,20 @@ def main():
     parser.add_argument('--json-file', type=str, help='Path to correct_keys.json file')
     parser.add_argument('--preprocessed-dir', type=str, default='Dataset/giantsteps-preprocessed-audio', help='Directory with preprocessed spectrograms')
     parser.add_argument('--dataset-dir', type=str, help='Dataset directory (legacy mode)')
-    parser.add_argument('--device', type=str, choices=['cpu', 'cuda'], help='Force device (default: auto-detect)')
+    parser.add_argument('--device', type=str, choices=['cpu', 'cuda', 'mps'], help='Force device (default: auto-detect)')
 
     args = parser.parse_args()
 
-    # Determine device
+    # Determine device (prioritize CUDA > MPS > CPU)
     if args.device:
         DEVICE = torch.device(args.device)
     else:
-        DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        if torch.cuda.is_available():
+            DEVICE = torch.device('cuda')
+        elif torch.backends.mps.is_available():
+            DEVICE = torch.device('mps')
+        else:
+            DEVICE = torch.device('cpu')
 
     print("=" * 80)
     print("KEY DETECTION MODEL EVALUATION")

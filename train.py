@@ -67,8 +67,8 @@ if __name__ == '__main__':
     train_set, val_set = random_split(dataset, [train_len, val_len])
     print(f"Train set: {train_len}, Validation set: {val_len}")
 
-    train_loader = DataLoader(train_set, batch_size=BATCH_SIZE, shuffle=True, num_workers=2)
-    val_loader = DataLoader(val_set, batch_size=BATCH_SIZE, shuffle=False, num_workers=2)
+    train_loader = DataLoader(train_set, batch_size=BATCH_SIZE, shuffle=True, num_workers=0)
+    val_loader = DataLoader(val_set, batch_size=BATCH_SIZE, shuffle=False, num_workers=0)
 
     # 2. Initialize model, criterion, optimizer
     print(f"\nModel output: {model_file_path}")

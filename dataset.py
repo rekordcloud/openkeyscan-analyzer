@@ -4,6 +4,7 @@ import torch
 import pickle
 import json
 from torch.utils.data import Dataset
+from tqdm import tqdm
 
 # Mapping from key string to Camelot Wheel index
 # (1A = 0, ..., 12A = 11, 1B = 12, ..., 12B = 23)
@@ -76,6 +77,11 @@ class KeyDataset(Dataset):
             root = Path(root_dir)
             self.annotations_path = root / 'annotations' / 'annotations.txt'
 
+            # Pre-cache all spectrogram files to avoid repeated glob calls
+            print("Caching spectrogram file list...")
+            all_spectrogram_files = set(f.stem for f in self.preprocessed_dir.glob('*.pkl'))
+            print(f"Found {len(all_spectrogram_files)} spectrogram files")
+
             with open(self.annotations_path, "r") as f:
                 header = f.readline()
                 for line in f:
@@ -86,9 +92,10 @@ class KeyDataset(Dataset):
                         if key_str in CAMELOT_MAPPING and confidence == 2:
                             camelot_idx = CAMELOT_MAPPING[key_str]
                             filename = f"{file_num}.LOFI"
-                            # Sanity check: ensure all expected pitch-shifted spectrograms exist
+                            # Check that all expected pitch-shifted spectrograms exist using cached set
                             expected = self.pitch_range[1] - self.pitch_range[0] + 1
-                            files_found = len(list(self.preprocessed_dir.glob(f'{filename}_*')))
+                            files_found = sum(1 for shift in range(self.pitch_range[0], self.pitch_range[1] + 1)
+                                              if f'{filename}_{shift}' in all_spectrogram_files)
                             if files_found < expected:
                                 print(f'File {filename} not preprocessed correctly. Found {files_found} spectrograms.')
                                 continue
@@ -112,7 +119,13 @@ class KeyDataset(Dataset):
         print(f"Loading dataset from JSON: {json_path}")
         print(f"Total entries in JSON: {len(entries)}")
 
-        for entry in entries:
+        # Pre-cache all spectrogram files to avoid repeated glob calls
+        # This prevents "too many open files" errors during long training runs
+        print("Caching spectrogram file list...")
+        all_spectrogram_files = set(f.stem for f in self.preprocessed_dir.glob('*.pkl'))
+        print(f"Found {len(all_spectrogram_files)} spectrogram files")
+
+        for entry in tqdm(entries, desc="Validating entries", unit="entry"):
             # Filter by confidence
             if entry.get('confidence') != 'high':
                 skipped_low_confidence += 1
@@ -137,9 +150,10 @@ class KeyDataset(Dataset):
             # Extract just the filename part (e.g., "dataset mtg/5061.LOFI.mp3" -> "5061.LOFI")
             filename = Path(filename_full).stem
 
-            # Sanity check: ensure all expected pitch-shifted spectrograms exist
+            # Check that all expected pitch-shifted spectrograms exist using cached set
             expected = self.pitch_range[1] - self.pitch_range[0] + 1
-            files_found = len(list(self.preprocessed_dir.glob(f'{filename}_*')))
+            files_found = sum(1 for shift in range(self.pitch_range[0], self.pitch_range[1] + 1)
+                              if f'{filename}_{shift}' in all_spectrogram_files)
             if files_found < expected:
                 missing_spectrograms += 1
                 continue
@@ -202,7 +216,7 @@ class KeyDataset(Dataset):
                 camelot_idx = (camelot_idx + camelot_steps) % 12
             else:  # major key
                 camelot_idx = (camelot_idx - 12 + camelot_steps) % 12 + 12
-        
+
         # Load pitch-shifted spectrogram from preprocessed data
         with open(self.preprocessed_dir / f'{filename}_{n_steps}.pkl', 'rb') as f:
             full_spec = pickle.load(f)
