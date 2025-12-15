@@ -5,7 +5,7 @@ from dataset import KeyDataset
 from torch.utils.data import DataLoader
 from model import KeyNet
 
-def load_model(model_path, device, num_classes=24, in_channels=1, Nf=20):
+def load_model(model_path, device, num_classes=24, in_channels=1, Nf=32, p=0.3):
     """
     Loads a pretrained KeyNet model from disk.
 
@@ -14,12 +14,13 @@ def load_model(model_path, device, num_classes=24, in_channels=1, Nf=20):
         device (torch.device): Target device (CPU or CUDA).
         num_classes (int): Number of key classes (default: 24).
         in_channels (int): Input channels (default: 1).
-        Nf (int): Number of feature maps in first convolution.
+        Nf (int): Number of feature maps in first convolution (default: 32).
+        p (float): Dropout probability (default: 0.3).
 
     Returns:
         KeyNet: Loaded model, ready for evaluation.
     """
-    model = KeyNet(num_classes=num_classes, in_channels=in_channels, Nf=Nf).to(device)
+    model = KeyNet(num_classes=num_classes, in_channels=in_channels, Nf=Nf, p=p).to(device)
     model.load_state_dict(torch.load(model_path, map_location=device))
     model.eval()
     return model
