@@ -5,7 +5,7 @@ from dataset import KeyDataset
 from torch.utils.data import DataLoader
 from model import KeyNet
 
-def load_model(model_path, device, num_classes=24, in_channels=1, Nf=32, p=0.3):
+def load_model(model_path, device, num_classes=24, in_channels=1, Nf=64, p=0.3):
     """
     Loads a pretrained KeyNet model from disk.
 

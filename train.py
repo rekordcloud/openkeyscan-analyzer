@@ -73,7 +73,7 @@ if __name__ == '__main__':
     # 2. Initialize model, criterion, optimizer
     print(f"\nModel output: {model_file_path}")
     print(f"Device: {DEVICE}")
-    model = KeyNet(num_classes=24, in_channels=1, Nf=32, p=0.3).to(DEVICE)
+    model = KeyNet(num_classes=24, in_channels=1, Nf=64, p=0.3).to(DEVICE)
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
 
