@@ -15,7 +15,7 @@ base_path = Path.cwd()
 
 # Data files to bundle
 datas = [
-    (str(base_path / 'checkpoints' / 'custom' / 'openkeyscan1.pt'), 'checkpoints'),
+    (str(base_path / 'checkpoints' / 'openkeyscan3.pt'), 'checkpoints'),
     # Bundle ffmpeg binaries for fast MP3/M4A/AAC decoding (fixes 25x slowdown)
     # The ffmpeg.exe (4.3MB) is a minimal audio-only build
 ]

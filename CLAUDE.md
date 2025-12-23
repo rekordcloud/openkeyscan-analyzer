@@ -126,7 +126,7 @@ def get_resource_path(relative_path):
     return base_path / relative_path
 ```
 
-**Usage:** Default model path now uses `get_resource_path('checkpoints/custom/openkeyscan1.pt')`
+**Usage:** Default model path now uses `get_resource_path('checkpoints/openkeyscan3.pt')`
 
 **Reason:** Allows the bundled executable to find the model file in PyInstaller's temporary extraction directory
 
@@ -188,7 +188,7 @@ pyinstaller openkeyscan_analyzer.spec
    - Executable binary
    - Python runtime and libraries
    - All dependencies (PyTorch, librosa, etc.)
-   - Trained model (`checkpoints/custom/openkeyscan1.pt`)
+   - Trained model (`checkpoints/custom/openkeyscan3.pt`)
 4. **Post-processing**: Automatically dereferences 15 symlinks to actual files
 
 ### Build Output
@@ -258,7 +258,9 @@ MusicalKeyCNN-main/
 ├── CLAUDE.md               # This file (technical documentation)
 ├── PERFORMANCE_INVESTIGATION.md  # Windows performance investigation
 ├── checkpoints/
-│   └── keynet.pt           # Trained model weights (1.8MB)
+│   └── keynet.pt           # Trained model weights
+│   └── openkeyscan1.pt     # Trained model weights with more data
+│   └── openkeyscan3.pt     # Trained model weights with optimized parameters
 ├── test/                   # Test scripts and test data
 │   ├── test_server.py      # Server test harness (full test with file discovery)
 │   ├── test_exe_quick.py   # Quick executable test with specific files
@@ -776,6 +778,14 @@ The included model (`keynet.pt`) achieves:
 - **Relative**: 6.79%
 - **Parallel**: 3.48%
 - **Other**: 14.90%
+
+The model trained with more data and optimized parameters (`openkeyscan3.pt`) achieves:
+- **Weighted Score**: 79.00% (MIREX metric)
+- **Correct**: 73.46%
+- **Fifth**: 4.46%
+- **Relative**: 8.16%
+- **Parallel**: 4.32%
+- **Other**: 9.61%
 
 ---
 

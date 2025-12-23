@@ -25,7 +25,7 @@ def test_device(device_name, num_runs=3):
 
     # Start server with specified device
     process = subprocess.Popen(
-        ['pipenv', 'run', 'python', 'openkeyscan_analyzer_server.py', '--device', device_name, '-m', 'checkpoints/keynet.pt'],
+        ['pipenv', 'run', 'python', 'openkeyscan_analyzer_server.py', '--device', device_name, '-m', 'checkpoints/openkeyscan3.pt'],
         cwd=project_root,
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
