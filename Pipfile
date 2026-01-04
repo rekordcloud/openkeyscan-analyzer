@@ -16,6 +16,7 @@ pyinstaller = "*"
 psutil = "*"
 pywin32-ctypes = "*"
 pefile = {version = "*", markers = "sys_platform == 'win32'"}
+macholib = "*"
 
 [requires]
 python_version = "3.12"
