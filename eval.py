@@ -130,6 +130,7 @@ def main():
     parser.add_argument('--preprocessed-dir', type=str, default='Dataset/giantsteps-preprocessed-audio', help='Directory with preprocessed spectrograms')
     parser.add_argument('--dataset-dir', type=str, help='Dataset directory (legacy mode)')
     parser.add_argument('--device', type=str, choices=['cpu', 'cuda', 'mps'], help='Force device (default: auto-detect)')
+    parser.add_argument('--nf', type=int, default=64, help='Number of feature maps in first conv layer (default: 64, keynet.pt uses 20)')
 
     args = parser.parse_args()
 
@@ -191,8 +192,8 @@ def main():
         print(f"Error: Model file not found: {model_path}")
         return
 
-    print("Loading model...")
-    model = load_model(model_path, DEVICE)
+    print(f"Loading model (Nf={args.nf})...")
+    model = load_model(model_path, DEVICE, Nf=args.nf)
     print("Model loaded successfully")
     print()
 
