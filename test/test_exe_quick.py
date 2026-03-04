@@ -22,9 +22,9 @@ else:
     exe_path = os.path.abspath("../dist/openkeyscan-analyzer/openkeyscan-analyzer")
     # Test files for macOS
     test_files = [
-        os.path.expanduser("~/Music/spotify/Athys & Duster - Barfight.mp3"),
-        os.path.expanduser("~/Music/spotify/Audio - Combust.mp3"),
-        os.path.expanduser("~/Music/spotify/Balthazar & JackRock - Andromeda.mp3")
+        os.path.expanduser("~/Music/Music/Dave Sinner - Absolute Horizon.mp3"),
+        os.path.expanduser("~/Music/DJ Music/House/RUZE - Mindset.mp3"),
+        os.path.expanduser("~/Music/DJ Music/House/Hotswing - Bamboleo.mp3")
     ]
 
 print(f"Starting executable: {exe_path}")
@@ -80,12 +80,12 @@ stderr_thread.start()
 
 # Wait for ready
 print("Waiting for server to be ready...")
-timeout = time.time() + 10
+timeout = time.time() + 30
 while not ready and time.time() < timeout:
     time.sleep(0.1)
 
 if not ready:
-    print("ERROR: Server did not become ready in 10 seconds")
+    print("ERROR: Server did not become ready in 30 seconds")
     process.kill()
     sys.exit(1)
 
