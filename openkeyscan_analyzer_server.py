@@ -136,31 +136,32 @@ def load_audio_pyav_optimized(audio_path, sample_rate=44100):
         t0 = time.time()
 
     container = av.open(str(audio_path))
-    audio_stream = container.streams.audio[0]
+    try:
+        audio_stream = container.streams.audio[0]
 
-    # Use non-planar float format for better CQT performance
-    resampler = av.AudioResampler(
-        format='flt',  # Non-planar float32 (critical for fast CQT)
-        layout='mono',
-        rate=sample_rate
-    )
+        # Use non-planar float format for better CQT performance
+        resampler = av.AudioResampler(
+            format='flt',  # Non-planar float32 (critical for fast CQT)
+            layout='mono',
+            rate=sample_rate
+        )
 
-    frames = []
-    for frame in container.decode(audio_stream):
-        resampled_frames = resampler.resample(frame)
-        if resampled_frames:
-            for resampled in resampled_frames:
+        frames = []
+        for frame in container.decode(audio_stream):
+            resampled_frames = resampler.resample(frame)
+            if resampled_frames:
+                for resampled in resampled_frames:
+                    frame_array = resampled.to_ndarray()
+                    frames.append(frame_array)
+
+        # Flush resampler to get remaining frames
+        remaining = resampler.resample(None)
+        if remaining:
+            for resampled in remaining:
                 frame_array = resampled.to_ndarray()
                 frames.append(frame_array)
-
-    # Flush resampler to get remaining frames
-    remaining = resampler.resample(None)
-    if remaining:
-        for resampled in remaining:
-            frame_array = resampled.to_ndarray()
-            frames.append(frame_array)
-
-    container.close()
+    finally:
+        container.close()
 
     # Concatenate all frames
     if not frames:
