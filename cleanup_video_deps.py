@@ -117,12 +117,10 @@ for base, versions in IMAGE_CODEC_BASES:
     IMAGE_CODECS.extend(generate_library_names(base, versions))
 
 # Video Python modules to remove (directories and files)
-# Use platform-specific extensions
-VIDEO_MODULES = [
-    'av/video',                                       # Entire video module directory
-    'av/subtitles',                                   # Entire subtitles module directory
-    f'av/sidedata/motionvectors.cpython-312-{platform.system().lower()}{PYTHON_EXT}',  # Motion vectors
-]
+# Empty on purpose: PyAV 16's av/__init__.py imports av.video, av.subtitles and
+# av.sidedata at import time, so removing them makes `import av` fail and
+# silently disables PyAV audio loading (~8 MB saved was not worth it)
+VIDEO_MODULES = []
 
 # Audio libraries to preserve (safeguard - will NOT remove these)
 AUDIO_LIBRARIES_SAFEGUARD = [

@@ -4,7 +4,7 @@ Optimized Key Detection Server with PyAV support
 Based on openkeyscan_analyzer_server.py with performance improvements
 
 Key optimizations:
-1. Uses PyAV for compressed formats (MP3, MP4, M4A, AAC) on Windows
+1. Uses PyAV for compressed formats (MP3, MP4, M4A, AAC) on Windows and Linux
 2. Adds warmup CQT to eliminate first-run overhead
 3. Uses non-planar float format and contiguous arrays for better performance
 """
@@ -115,7 +115,9 @@ from eval import load_model
 # Supported audio formats
 SUPPORTED_FORMATS = {'.mp3', '.mp4', '.wav', '.flac', '.ogg', '.m4a', '.aac', '.aiff', '.au'}
 
-# Formats that benefit from PyAV on Windows
+# Formats that benefit from PyAV on Windows and Linux
+# (Linux has no audioread backend for these without a system FFmpeg)
+PYAV_PLATFORMS = {'win32', 'linux'}
 PYAV_FORMATS = {'.mp3', '.mp4', '.m4a', '.aac'}
 
 
@@ -162,12 +164,19 @@ def load_audio_pyav_optimized(audio_path, sample_rate=44100):
         )
 
         frames = []
-        for frame in container.decode(audio_stream):
-            resampled_frames = resampler.resample(frame)
-            if resampled_frames:
-                for resampled in resampled_frames:
-                    frame_array = resampled.to_ndarray()
-                    frames.append(frame_array)
+        for packet in container.demux(audio_stream):
+            try:
+                decoded_frames = packet.decode()
+            except av.error.InvalidDataError:
+                # Skip corrupt packets like ffmpeg does instead of failing the whole file
+                continue
+
+            for frame in decoded_frames:
+                resampled_frames = resampler.resample(frame)
+                if resampled_frames:
+                    for resampled in resampled_frames:
+                        frame_array = resampled.to_ndarray()
+                        frames.append(frame_array)
 
         # Flush resampler to get remaining frames
         remaining = resampler.resample(None)
@@ -207,7 +216,7 @@ def load_audio_pyav_optimized(audio_path, sample_rate=44100):
 def preprocess_audio(audio_path, sample_rate=44100, n_bins=105, hop_length=8820):
     """
     Loads an audio file and extracts a log-magnitude CQT spectrogram.
-    Uses optimized PyAV for compressed formats on Windows.
+    Uses optimized PyAV for compressed formats on Windows and Linux.
 
     Args:
         audio_path (Path): Path to audio file
@@ -222,9 +231,9 @@ def preprocess_audio(audio_path, sample_rate=44100, n_bins=105, hop_length=8820)
     audio_path = Path(audio_path)
     suffix = audio_path.suffix.lower()
 
-    # Use optimized PyAV for compressed formats on Windows
+    # Use optimized PyAV for compressed formats on Windows and Linux
     use_pyav = (
-        sys.platform == 'win32' and
+        sys.platform in PYAV_PLATFORMS and
         PYAV_AVAILABLE and
         suffix in PYAV_FORMATS
     )
@@ -234,7 +243,7 @@ def preprocess_audio(audio_path, sample_rate=44100, n_bins=105, hop_length=8820)
             print(f"  Using PyAV OPTIMIZED for {suffix}", file=sys.stderr)
         waveform = load_audio_pyav_optimized(audio_path, sample_rate)
     else:
-        # Use librosa for native formats (WAV, FLAC, OGG) or non-Windows
+        # Use librosa for native formats (WAV, FLAC, OGG) or macOS
         if profile:
             print(f"  Using librosa for {suffix}", file=sys.stderr)
             t0 = time.time()
@@ -329,7 +338,7 @@ class KeyDetectionServer:
         print(f"  Model path: {self.model_path}", file=sys.stderr)
         print(f"  Device: {self.device}", file=sys.stderr)
         print(f"  PyAV available: {PYAV_AVAILABLE}", file=sys.stderr)
-        if PYAV_AVAILABLE and sys.platform == 'win32':
+        if PYAV_AVAILABLE and sys.platform in PYAV_PLATFORMS:
             print(f"  Using PyAV for: {', '.join(PYAV_FORMATS)}", file=sys.stderr)
 
         self.running = True
