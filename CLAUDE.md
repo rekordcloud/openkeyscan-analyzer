@@ -230,11 +230,12 @@ The following symlinks are automatically replaced with actual files:
 - **Build Output**: `.exe` executable (works without Python installation)
 
 ### Linux
-- **Audio Backend**: Would require FFmpeg for compressed format decoding
-- **Native Formats**: WAV, FLAC, OGG work natively via PySoundFile
-- **Compressed Formats**: MP3, M4A, AAC require FFmpeg or GStreamer
-- **FFmpeg**: Must be bundled or installed on target system for MP3/M4A/AAC
-- **Distribution**: Not currently configured, would need platform-specific builds
+- **Build**: `./build-linux-x64.sh` from macOS or Linux; runs PyInstaller in an x64 Debian 11 Docker container (glibc 2.31) and copies the result to `openkeyscan-app/build/lib/linux/x64/`
+- **Torch**: CPU-only wheel (the default Linux wheel pulls in ~2GB of CUDA); torchaudio is not installed
+- **Audio Backend**: PyAV (bundled FFmpeg libraries) for MP3, MP4, M4A, AAC, same as Windows; PySoundFile for WAV, FLAC, OGG
+- **FFmpeg**: Not required on the target system
+- **Post-build**: torch test programs are removed and `libtorch.so` is unlinked from its dependents with patchelf, otherwise Conveyor makes the .deb depend on Ubuntu's `libtorch-dev`
+- **Tested On**: Ubuntu 22.04 container (x64 emulation on Apple Silicon)
 
 ---
 
