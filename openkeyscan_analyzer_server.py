@@ -85,6 +85,21 @@ except Exception as e:
 
 # Now import librosa after scipy is fully loaded
 import librosa
+import soundfile
+
+# libsndfile's MP3 (mpg123) open path is not thread-safe: concurrent sf_open
+# calls from worker threads intermittently crash the process with SIGBUS
+# (EXC_ARM_DA_ALIGN in mpeg_init). Serialize opens only; decoding stays parallel.
+_SOUNDFILE_OPEN_LOCK = threading.Lock()
+_soundfile_init = soundfile.SoundFile.__init__
+
+
+def _locked_soundfile_init(self, *args, **kwargs):
+    with _SOUNDFILE_OPEN_LOCK:
+        _soundfile_init(self, *args, **kwargs)
+
+
+soundfile.SoundFile.__init__ = _locked_soundfile_init
 
 # Import PyAV for fast audio loading on Windows
 try:

@@ -96,7 +96,8 @@ exe_server = EXE(
     argv_emulation=False,
     target_arch=target_arch,  # Set from environment variable (arm64, x86_64, or None)
     python_options=['X utf8_mode=1'],  # Force UTF-8 mode for proper Unicode handling on Windows
-    codesign_identity='Developer ID Application: Rekordcloud B.V. (2B7KR8BSYR)',
+    # Override with a SHA-1 hash when the keychain holds several certs with this name
+    codesign_identity=os.environ.get('CODESIGN_IDENTITY', 'Developer ID Application: Rekordcloud B.V. (2B7KR8BSYR)'),
     entitlements_file='./analyzer.entitlements',
 )
 
