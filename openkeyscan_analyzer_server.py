@@ -11,6 +11,7 @@ Key optimizations:
 
 import sys
 import os
+import re
 import json
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
@@ -565,18 +566,25 @@ class KeyDetectionServer:
 
         return current_gen
 
-    def handle_request(self, line):
-        """Parse and handle a request line."""
+    def handle_request(self, line, send=None, cleanup=None):
+        """Parse and handle a request line (or an already-parsed dict).
+
+        `send` replaces stdout as the reply channel (a TCP client); `cleanup`
+        runs once the request is answered or dropped (the TCP path deletes
+        the temp audio file it wrote).
+        """
+        send = send or self.send_message
         try:
-            request = json.loads(line)
+            request = json.loads(line) if isinstance(line, str) else line
 
             # Check if this is a reset command
             if request.get('type') == 'reset':
                 new_generation = self.reset()
                 # Send reset_complete immediately
-                self.send_message({'type': 'reset_complete', 'generation': new_generation})
+                send({'type': 'reset_complete', 'generation': new_generation})
                 # Send reset_idle after waiting for tasks to finish
-                self.send_message({'type': 'reset_idle', 'generation': new_generation})
+                send({'type': 'reset_idle', 'generation': new_generation})
+                if cleanup: cleanup()
                 return
 
             # Capture current generation for this request
@@ -598,8 +606,11 @@ class KeyDetectionServer:
                     # Check if result is from current generation before sending
                     with self.generation_lock:
                         if result['generation'] == self.generation:
-                            self.send_message(result)
+                            send(result)
                 finally:
+                    if cleanup:
+                        try: cleanup()
+                        except Exception: pass
                     # Remove future from active set when done
                     with self.futures_lock:
                         if future_ref[0] is not None:
@@ -613,8 +624,92 @@ class KeyDetectionServer:
 
         except json.JSONDecodeError as e:
             print(f"Invalid JSON: {e}", file=sys.stderr)
+            if cleanup: cleanup()
         except Exception as e:
             print(f"Error handling request: {e}", file=sys.stderr)
+            if cleanup: cleanup()
+
+    def run_tcp(self, host, port):
+        """Serve the same NDJSON protocol over TCP, one client per connection.
+
+        A request is either {"id", "path"} (a file this process can read) or
+        a header {"id", "bytes": N, "ext": ".wav"} followed by N raw bytes of
+        audio: the bytes land in a temp file that is deleted once answered, so
+        a client in another container or on another host needs no shared
+        volume. Replies and the initial {"type": "ready"} go back on the same
+        connection; no heartbeats (a TCP peer notices a dead connection
+        itself). stdin/stdout stay untouched: the desktop app keeps `run()`.
+        """
+        import socketserver
+        import tempfile
+        server = self
+        tmp_dir = tempfile.mkdtemp(prefix='oks-tcp-')
+
+        class Handler(socketserver.StreamRequestHandler):
+            def handle(self):
+                lock = threading.Lock()
+
+                def send(message):
+                    data = (json.dumps(message) + '\n').encode('utf-8')
+                    with lock:
+                        try:
+                            self.wfile.write(data)
+                            self.wfile.flush()
+                        except (OSError, ValueError):
+                            pass
+
+                peer = f"{self.client_address[0]}:{self.client_address[1]}"
+                print(f"[tcp] {peer} connected", file=sys.stderr)
+                send({'type': 'ready'})
+                for raw in self.rfile:
+                    line = raw.decode('utf-8', 'replace').strip()
+                    if not line:
+                        continue
+                    try:
+                        request = json.loads(line)
+                    except json.JSONDecodeError as e:
+                        send({'status': 'error', 'error': f'invalid JSON: {e}'})
+                        continue
+                    cleanup = None
+                    nbytes = request.get('bytes')
+                    if isinstance(nbytes, int) and nbytes > 0:
+                        ext = request.get('ext') or '.wav'
+                        if not re.fullmatch(r'\.[A-Za-z0-9]{1,5}', ext):
+                            ext = '.wav'
+                        fd, path = tempfile.mkstemp(prefix='req-', suffix=ext, dir=tmp_dir)
+                        remaining = nbytes
+                        with os.fdopen(fd, 'wb') as f:
+                            while remaining > 0:
+                                chunk = self.rfile.read(min(remaining, 1 << 20))
+                                if not chunk:
+                                    break
+                                f.write(chunk)
+                                remaining -= len(chunk)
+                        if remaining > 0:   # connection closed mid-upload
+                            os.unlink(path)
+                            break
+                        request = dict(request, path=path)
+
+                        def cleanup(p=path):
+                            if os.path.exists(p):
+                                os.unlink(p)
+                    server.handle_request(request, send, cleanup)
+                print(f"[tcp] {peer} disconnected", file=sys.stderr)
+
+        class Server(socketserver.ThreadingTCPServer):
+            allow_reuse_address = True
+            daemon_threads = True
+
+        with Server((host, port), Handler) as srv:
+            print(f"Listening on {host}:{port} ({self.num_workers} workers)", file=sys.stderr)
+            try:
+                srv.serve_forever()
+            except KeyboardInterrupt:
+                print("Shutting down...", file=sys.stderr)
+            finally:
+                self.running = False
+                self.executor.shutdown(wait=True)
+                print("Server stopped", file=sys.stderr)
 
     def run(self):
         """Main server loop."""
@@ -658,6 +753,8 @@ def main():
                         help="Device to use: 'cpu' or 'cuda'")
     parser.add_argument('-w', '--workers', type=int, default=1,
                         help="Number of worker threads (default: 1)")
+    parser.add_argument('--listen', type=str, default=None,
+                        help="Serve over TCP at HOST:PORT instead of stdin/stdout (e.g. 0.0.0.0:7878)")
 
     args = parser.parse_args()
 
@@ -667,7 +764,11 @@ def main():
         num_workers=args.workers
     )
 
-    server.run()
+    if args.listen:
+        host, port = args.listen.rsplit(':', 1)
+        server.run_tcp(host, int(port))
+    else:
+        server.run()
 
 
 if __name__ == '__main__':
